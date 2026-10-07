@@ -5,7 +5,7 @@ import { el, kpi, fmt, secao, tabela, grafico, select } from "../ui.js";
 export async function render(root, ctx) {
   const [todos, fisios] = await Promise.all([Resumo.fisios(ctx.clinica_id), Fisios.listar(ctx.clinica_id)]);
   const meses = [...new Set(todos.map(r => r.mes))].sort();
-  const padrao = meses[meses.length - 1];
+  const padrao = [...new Set(todos.filter(r => r.atendimentos || r.aval_realizadas).map(r => r.mes))].sort().pop() || meses[meses.length - 1];
   const sel = select([["todos", "Todo o período"], ...meses.map(m => [m, fmt.mes(m)])], {}, padrao || "todos");
   root.append(el("div", { class: "topo" },
     el("div", {}, el("h1", {}, "Fisioterapeutas"), el("p", { class: "sub", style: "margin:0" }, "Avaliações, conversão, contratos, atendimentos e tempo de atendimento por profissional.")),

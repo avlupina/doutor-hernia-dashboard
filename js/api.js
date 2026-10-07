@@ -19,6 +19,14 @@ export const Semanas = {
     return `${y}-S${String(w).padStart(2, "0")}`;
   },
   atual() { return Semanas.idDe(new Date()); },
+  /** Semanas ao redor de `id`: `antes` anteriores e `depois` posteriores (inclui a própria). */
+  async janela(id, antes = 26, depois = 8) {
+    let ini = id, fim = id;
+    for (let i = 0; i < antes; i++) ini = shiftSemana(ini, -1);
+    for (let i = 0; i < depois; i++) fim = shiftSemana(fim, 1);
+    const rows = unwrap(await sb.from("semanas").select("*").gte("id_semana", ini).lte("id_semana", fim).order("inicio"));
+    return rows;
+  },
   anterior(id) { return shiftSemana(id, -1); },
   proxima(id) { return shiftSemana(id, 1); },
 };

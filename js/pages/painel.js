@@ -3,9 +3,11 @@ import { Semanas, Resumo, Metas, Reunioes, Acoes } from "../api.js";
 import { el, kpi, fmt, secao, tabela, select, grafico, botao } from "../ui.js";
 
 export async function render(root, ctx) {
-  const semanas = await Semanas.listar("2025-01-01", "2028-12-31");
-  const idsComDados = new Set((await Resumo.semanal(ctx.clinica_id)).map(r => r.id_semana));
-  const padrao = ctx.params[0] || [...idsComDados].sort().pop() || Semanas.atual();
+  const todas = await Resumo.semanal(ctx.clinica_id);
+  const idsComDados = new Set(todas.map(r => r.id_semana));
+  const comAtividade = todas.filter(r => r.leads || r.atendimentos || r.receitas > 0 || r.contratos).map(r => r.id_semana).sort();
+  const padrao = ctx.params[0] || comAtividade.pop() || [...idsComDados].sort().pop() || Semanas.atual();
+  const semanas = await Semanas.janela(padrao, 26, 8);
   const topo = el("div", { class: "topo" },
     el("div", {}, el("h1", {}, "Painel semanal"), el("p", { class: "sub", style: "margin:0" }, "Pauta da reunião semanal com indicadores, agenda, financeiro e plano de ação.")),
     el("div", { class: "acoes" },

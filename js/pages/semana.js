@@ -5,8 +5,8 @@ import { LISTAS } from "../config.js";
 
 export async function render(root, ctx) {
   if (!ctx.editor) { root.append(secao("Acesso", el("p", {}, "Apenas administradores e gestores lançam dados."))); return; }
-  const semanas = await Semanas.listar("2025-01-01", "2028-12-31");
   const id0 = ctx.params[0] || Semanas.atual();
+  const semanas = await Semanas.janela(id0, 26, 8);
   const sel = select(semanas.map(s => [s.id_semana, `${s.id_semana}  (${fmt.data(s.inicio)} – ${fmt.data(s.fim)})`]), {}, id0);
   root.append(el("div", { class: "topo" },
     el("div", {}, el("h1", {}, "Lançar semana"), el("p", { class: "sub", style: "margin:0" }, "Preencha os dados coletados na semana. Cada bloco salva separadamente.")),
