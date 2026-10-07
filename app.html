@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Doutor Hérnia Dashboard</title>
-  <link rel="stylesheet" href="css/app.css?v=2026.10.07-5">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="css/app.css?v=2026.10.07-6">
   <script src="vendor/supabase.js"></script>
   <script src="vendor/chart.umd.js"></script>
   <script src="vendor/xlsx.full.min.js"></script>
@@ -12,17 +13,22 @@
 <body>
   <div class="shell">
     <nav class="sidebar">
-      <div class="marca">Doutor Hérnia</div>
+      <div class="marca"><img src="assets/logo-branca.png" alt="Doutor Hérnia"></div>
       <div class="clinica" id="nav-clinica">…</div>
-      <a href="#/painel">Painel semanal</a>
-      <a href="#/mensal">Resultados mensais</a>
+      <div class="unidade"><select id="nav-unidade" title="Unidade"></select></div>
+      <a href="#/painel">Painel Semanal</a>
+      <a href="#/mensal">Resultado Mensal</a>
       <a href="#/fisios">Fisioterapeutas</a>
+      <a href="#/financeiro">Financeiro</a>
+      <a href="#/projecoes">Projeções</a>
       <a href="#/marketing">Marketing</a>
-      <a href="#/financeiro">Financeiro &amp; projeções</a>
-      <a href="#/semana" data-editor>Lançar semana</a>
-      <a href="#/importar" data-editor>Importar planilha</a>
-      <a href="#/config" data-editor>Metas e equipe</a>
-      <a href="#/usuarios" data-admin>Usuários e acessos</a>
+      <a href="#/metas" data-editor>Metas</a>
+      <a href="#/semana" data-editor>Lançar Semana</a>
+      <a href="#/importar" data-editor>Importar Planilha</a>
+      <a href="#/cadastros" data-editor>Cadastros</a>
+      <a href="#/usuarios">Usuários e Senhas</a>
+      <div class="sep"></div>
+      <a href="#/assistente" class="ia">Assistente IA</a>
       <div class="rodape">
         <div id="nav-usuario"></div>
         <button class="btn sec mini" id="sair">Sair</button>
@@ -30,6 +36,6 @@
     </nav>
     <main id="main"><p class="sub">Carregando…</p></main>
   </div>
-  <script type="module" src="js/app.js?v=2026.10.07-5"></script>
+  <script type="module" src="js/app.js?v=2026.10.07-6"></script>
 </body>
 </html>

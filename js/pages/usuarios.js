@@ -1,13 +1,21 @@
 // Usuários e acessos — papéis, ativação e convites (somente admin).
 import { Usuarios } from "../api.js";
+import { sb } from "../supabase.js";
 import { el, secao, input, select, campo, botao, toast, erro, tabela } from "../ui.js";
 import { LISTAS } from "../config.js";
 
 const DESCR = { admin: "tudo, inclusive usuários e acessos", gestor: "lança, importa e edita dados e metas", fisio: "consulta painéis (sem edição)", leitura: "consulta painéis (sem edição)" };
 
 export async function render(root, ctx) {
-  if (!ctx.admin) { root.append(secao("Acesso", el("p", {}, "Apenas administradores gerenciam usuários."))); return; }
-  root.append(el("div", { class: "topo" }, el("div", {}, el("h1", {}, "Usuários e acessos"), el("p", { class: "sub", style: "margin:0" }, "Convide pelo e-mail; ao criar a conta com esse e-mail a pessoa entra automaticamente na clínica com o papel definido."))));
+  const s1 = input({ type: "password", minlength: 6, autocomplete: "new-password" }), s2 = input({ type: "password", minlength: 6, autocomplete: "new-password" });
+  const minhaSenha = secao("Minha senha", el("div", { class: "form-grid" }, campo("Nova senha", s1), campo("Repita a nova senha", s2)),
+    el("div", { class: "form-acoes" }, botao("Alterar minha senha", async () => {
+      if (s1.value.length < 6) return toast("A senha precisa ter ao menos 6 caracteres.", "erro");
+      if (s1.value !== s2.value) return toast("As senhas não coincidem.", "erro");
+      try { const { error } = await sb.auth.updateUser({ password: s1.value }); if (error) throw error; s1.value = s2.value = ""; toast("Senha alterada.", "ok"); } catch (e) { erro(e); }
+    })));
+  if (!ctx.admin) { root.append(el("h1", {}, "Usuários e Senhas"), minhaSenha); return; }
+  root.append(el("div", { class: "topo" }, el("div", {}, el("h1", {}, "Usuários e Senhas"), el("p", { class: "sub", style: "margin:0" }, "Convide pelo e-mail; ao criar a conta com esse e-mail a pessoa entra automaticamente na clínica com o papel definido."))));
   root.append(secao("Papéis", el("dl", { class: "lista-chave" }, ...LISTAS.papeis.flatMap(p => [el("dt", {}, p), el("dd", {}, DESCR[p])]))));
 
   const lista = el("div"); root.append(secao("Usuários da clínica", lista));
@@ -18,6 +26,7 @@ export async function render(root, ctx) {
       try { await Usuarios.convidar({ clinica_id: ctx.clinica_id, email: email.value.trim().toLowerCase(), papel: papel.value, criado_por: ctx.session.user.id }); email.value = ""; toast("Convite registrado. Peça para a pessoa criar a conta com esse e-mail.", "ok"); await convites(); }
       catch (e) { erro(e); }
     })), conv));
+  root.append(minhaSenha);
   await usuarios(); await convites();
 
   async function usuarios() {

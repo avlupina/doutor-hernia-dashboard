@@ -5,11 +5,12 @@ import { LISTAS } from "../config.js";
 
 export async function render(root, ctx) {
   if (!ctx.editor) { root.append(secao("Acesso", el("p", {}, "Apenas administradores e gestores lançam dados."))); return; }
+  if (!ctx.unidade_id) { root.append(secao("Selecione uma unidade", el("p", {}, "Escolha a unidade no menu lateral para lançar dados."))); return; }
   const id0 = ctx.params[0] || Semanas.atual();
-  const semanas = await Semanas.janela(id0, 26, 8);
+  const semanas = await Semanas.disponiveis(id0, 8);
   const sel = select(semanas.map(s => [s.id_semana, `${s.id_semana}  (${fmt.data(s.inicio)} – ${fmt.data(s.fim)})`]), {}, id0);
   root.append(el("div", { class: "topo" },
-    el("div", {}, el("h1", {}, "Lançar semana"), el("p", { class: "sub", style: "margin:0" }, "Preencha os dados coletados na semana. Cada bloco salva separadamente.")),
+    el("div", {}, el("h1", {}, "Lançar Semana — " + ctx.unidade.nome), el("p", { class: "sub", style: "margin:0" }, "Preencha os dados coletados na semana. Cada bloco salva separadamente.")),
     el("div", { class: "acoes" }, el("span", { class: "nota" }, "Semana:"), sel, botao("Ver no painel", () => location.hash = "#/painel/" + sel.value, "btn sec"))));
   const corpo = el("div"); root.append(corpo);
   sel.onchange = () => { history.replaceState(null, "", "#/semana/" + sel.value); carregar(sel.value); };
@@ -18,11 +19,11 @@ export async function render(root, ctx) {
   async function carregar(id) {
     corpo.replaceChildren(el("p", { class: "sub" }, "Carregando…"));
     const [fisios, { base, fisios: bf }, leads, reuniao, acoes, contratos] = await Promise.all([
-      Fisios.listar(ctx.clinica_id), BaseSemanal.obter(ctx.clinica_id, id), LeadsCanal.listar(ctx.clinica_id, id),
-      Reunioes.obter(ctx.clinica_id, id), Acoes.listar(ctx.clinica_id, id), Contratos.listar(ctx.clinica_id),
+      Fisios.listar(ctx.u), BaseSemanal.obter(ctx.u, id), LeadsCanal.listar(ctx.u, id),
+      Reunioes.obter(ctx.u, id), Acoes.listar(ctx.u, id), Contratos.listar(ctx.u),
     ]);
     corpo.replaceChildren();
-    if (!fisios.length) corpo.append(el("p", { class: "nota" }, "Cadastre os fisioterapeutas em “Metas e equipe” para lançar os números por profissional."));
+    if (!fisios.length) corpo.append(el("p", { class: "nota" }, "Cadastre os fisioterapeutas em “Cadastros” para lançar os números por profissional."));
     const sem = semanas.find(s => s.id_semana === id);
 
     // --- base semanal
@@ -47,9 +48,9 @@ export async function render(root, ctx) {
         campo("Tempo médio de atendimento (min)", x.tempo), campo("Desvio padrão (min)", x.desvio)))),
       el("div", { class: "form-acoes" }, botao("Salvar dados da base", async () => {
         try {
-          const row = { clinica_id: ctx.clinica_id, id_semana: id };
+          const row = { clinica_id: ctx.clinica_id, unidade_id: ctx.unidade_id, id_semana: id };
           for (const k of Object.keys(F)) row[k] = k === "observacoes" ? F[k].value : Number(F[k].value || 0);
-          const rowsF = FF.map(x => ({ clinica_id: ctx.clinica_id, id_semana: id, fisioterapeuta_id: x.f.id, aval_realizadas: Number(x.aval.value || 0), contratos: Number(x.contratos.value || 0),
+          const rowsF = FF.map(x => ({ clinica_id: ctx.clinica_id, unidade_id: ctx.unidade_id, id_semana: id, fisioterapeuta_id: x.f.id, aval_realizadas: Number(x.aval.value || 0), contratos: Number(x.contratos.value || 0),
             atendimentos: Number(x.atend.value || 0), tempo_medio_min: x.tempo.value === "" ? null : Number(x.tempo.value), desvio_min: x.desvio.value === "" ? null : Number(x.desvio.value) }));
           await BaseSemanal.salvar(row, rowsF); toast("Dados da base salvos.", "ok");
         } catch (e) { erro(e); }
@@ -63,7 +64,7 @@ export async function render(root, ctx) {
     LC.forEach(x => x.i.oninput = atualizaSoma); F.leads.oninput = atualizaSoma; atualizaSoma();
     corpo.append(secao("Leads por canal de ingresso", el("div", { class: "form-grid" }, ...LC.map(x => campo(x.c, x.i))), soma,
       el("div", { class: "form-acoes" }, botao("Salvar leads por canal", async () => {
-        try { await LeadsCanal.salvar(LC.map(x => ({ clinica_id: ctx.clinica_id, id_semana: id, canal: x.c, quantidade: Number(x.i.value || 0) }))); toast("Leads por canal salvos.", "ok"); } catch (e) { erro(e); }
+        try { await LeadsCanal.salvar(LC.map(x => ({ clinica_id: ctx.clinica_id, unidade_id: ctx.unidade_id, id_semana: id, canal: x.c, quantidade: Number(x.i.value || 0) }))); toast("Leads por canal salvos.", "ok"); } catch (e) { erro(e); }
       }))));
 
     // --- contratos da semana
@@ -82,7 +83,7 @@ export async function render(root, ctx) {
         campo("Valor (R$)", N.valor), campo("Condição", N.cond), campo("Forma de pagamento", N.forma), campo("Parcelas", N.parc), campo("Status pagamento", N.status), campo("Canal de ingresso", N.canal)),
       el("div", { class: "form-acoes" }, botao("Adicionar", async () => {
         try {
-          const r = await Contratos.salvar({ clinica_id: ctx.clinica_id, data: N.data.value, paciente: N.paciente.value, tipo: N.tipo.value, fisioterapeuta_id: N.fisio.value || null, descricao: N.desc.value,
+          const r = await Contratos.salvar({ clinica_id: ctx.clinica_id, unidade_id: ctx.unidade_id, data: N.data.value, paciente: N.paciente.value, tipo: N.tipo.value, fisioterapeuta_id: N.fisio.value || null, descricao: N.desc.value,
             n_sessoes: N.sessoes.value ? Number(N.sessoes.value) : null, valor: Number(N.valor.value || 0), condicao: N.cond.value, forma_pagamento: N.forma.value, parcelas: Number(N.parc.value || 1), status_pagamento: N.status.value, canal: N.canal.value });
           r.fisioterapeutas = { nome: fisios.find(f => f.id === r.fisioterapeuta_id)?.nome };
           if (r.id_semana === id) ctSem.unshift(r); else toast(`Contrato salvo na semana ${r.id_semana}.`);
@@ -104,7 +105,7 @@ export async function render(root, ctx) {
       campo("Metas da semana", RF.metas_semana), campo("Soluções para os problemas identificados", RF.solucoes)),
       el("div", { class: "form-acoes" }, botao("Salvar reunião", async () => {
         try {
-          const row = { clinica_id: ctx.clinica_id, id_semana: id };
+          const row = { clinica_id: ctx.clinica_id, unidade_id: ctx.unidade_id, id_semana: id };
           for (const k of Object.keys(RF)) row[k] = k === "prejudica_experiencia" ? (RF[k].value === "" ? null : RF[k].value === "true") : (RF[k].value || null);
           await Reunioes.salvar(row); toast("Reunião salva.", "ok");
         } catch (e) { erro(e); }
@@ -125,7 +126,7 @@ export async function render(root, ctx) {
         campo("Quem (Who)", A.quem), campo("Como (How)", A.como), campo("Quanto (How much, R$)", A.quanto), campo("Status", A.status)),
       el("div", { class: "form-acoes" }, botao("Adicionar ação", async () => {
         try {
-          const r = await Acoes.salvar({ clinica_id: ctx.clinica_id, id_semana: id, ordem: acoes.length + 1, problema: A.problema.value, o_que: A.o_que.value, por_que: A.por_que.value, onde: A.onde.value,
+          const r = await Acoes.salvar({ clinica_id: ctx.clinica_id, unidade_id: ctx.unidade_id, id_semana: id, ordem: acoes.length + 1, problema: A.problema.value, o_que: A.o_que.value, por_que: A.por_que.value, onde: A.onde.value,
             quando: A.quando.value || null, quem: A.quem.value, como: A.como.value, quanto: A.quanto.value ? Number(A.quanto.value) : null, status: A.status.value });
           acoes.push(r); desenharAc(); Object.values(A).forEach(i => { if (i.tagName === "INPUT") i.value = ""; }); toast("Ação adicionada.", "ok");
         } catch (e) { erro(e); }

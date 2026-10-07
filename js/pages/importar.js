@@ -5,7 +5,8 @@ import { el, fmt, secao, tabela, botao, toast, erro } from "../ui.js";
 
 export async function render(root, ctx) {
   if (!ctx.editor) { root.append(secao("Acesso", el("p", {}, "Apenas administradores e gestores importam dados."))); return; }
-  root.append(el("div", { class: "topo" }, el("div", {}, el("h1", {}, "Importar planilha"),
+  if (!ctx.unidade_id) { root.append(secao("Selecione uma unidade", el("p", {}, "Escolha no menu lateral a unidade para a qual a planilha será importada."))); return; }
+  root.append(el("div", { class: "topo" }, el("div", {}, el("h1", {}, "Importar Planilha — " + ctx.unidade.nome),
     el("p", { class: "sub", style: "margin:0" }, "Use o modelo Base_Dados_Clinica.xlsx. Semanas já existentes são atualizadas; contratos, lançamentos e ações das semanas presentes no arquivo são substituídos."))));
 
   const file = el("input", { type: "file", accept: ".xlsx,.xlsm", class: "oculto" });
@@ -48,7 +49,7 @@ export async function render(root, ctx) {
   }
 
   async function historico() {
-    const rows = await Importacoes.listar(ctx.clinica_id);
+    const rows = await Importacoes.listar(ctx.u);
     hist.replaceChildren(tabela([
       { k: "created_at", t: "Data", f: v => new Date(v).toLocaleString("pt-BR") }, { k: "arquivo", t: "Arquivo" },
       { k: r => r.resumo?.semanas?.join(", "), t: "Semanas" },

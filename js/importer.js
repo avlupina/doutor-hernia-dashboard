@@ -108,27 +108,27 @@ function semanaDe(iso) { // mesma regra ISO do banco
 
 /** Grava os dados analisados. onProgress(texto, fração). */
 export async function gravar(dados, ctx, arquivo, onProgress = () => {}) {
-  const cid = ctx.clinica_id;
+  const cid = ctx.clinica_id, uid = ctx.unidade_id; const u = { clinica_id: cid, unidade_id: uid };
   const resumo = {};
   onProgress("Equipe e metas", 0.05);
-  const porSlot = await Fisios.garantirSlots(cid, dados.fisios);
-  const existentes = await Fisios.listar(cid);
+  const porSlot = await Fisios.garantirSlots(u, dados.fisios);
+  const existentes = await Fisios.listar(u);
   const porNome = Object.fromEntries(existentes.map(f => [f.nome.toLowerCase(), f.id]));
-  if (dados.metas.length) await Metas.salvar(cid, dados.metas.filter(m => METAS_PADRAO.some(p => p[0] === m.indicador)));
+  if (dados.metas.length) await Metas.salvar(u, dados.metas.filter(m => METAS_PADRAO.some(p => p[0] === m.indicador)));
 
   onProgress("Base semanal", 0.2);
   if (dados.base.length) {
-    unwrap(await sb.from("base_semanal").upsert(dados.base.map(b => ({ ...b, clinica_id: cid, updated_at: new Date().toISOString() })), { onConflict: "clinica_id,id_semana" }));
-    const rowsF = dados.fisioRows.filter(r => porSlot[r.slot]).map(({ slot, ...r }) => ({ ...r, clinica_id: cid, fisioterapeuta_id: porSlot[slot].id }));
-    if (rowsF.length) unwrap(await sb.from("base_semanal_fisio").upsert(rowsF, { onConflict: "clinica_id,id_semana,fisioterapeuta_id" }));
+    unwrap(await sb.from("base_semanal").upsert(dados.base.map(b => ({ ...b, clinica_id: cid, unidade_id: uid, updated_at: new Date().toISOString() })), { onConflict: "clinica_id,unidade_id,id_semana" }));
+    const rowsF = dados.fisioRows.filter(r => porSlot[r.slot]).map(({ slot, ...r }) => ({ ...r, clinica_id: cid, unidade_id: uid, fisioterapeuta_id: porSlot[slot].id }));
+    if (rowsF.length) unwrap(await sb.from("base_semanal_fisio").upsert(rowsF, { onConflict: "clinica_id,unidade_id,id_semana,fisioterapeuta_id" }));
   }
   resumo.base_semanal = dados.base.length;
 
   onProgress("Contratos", 0.4);
   if (dados.contratos.length) {
     const sem = [...new Set(dados.contratos.map(c => semanaDe(c.data)))];
-    unwrap(await sb.from("contratos").delete().eq("clinica_id", cid).in("id_semana", sem));
-    unwrap(await sb.from("contratos").insert(dados.contratos.map(({ fisio_nome, ...c }) => ({ ...c, clinica_id: cid, fisioterapeuta_id: fisio_nome ? porNome[fisio_nome.toLowerCase()] || null : null }))));
+    unwrap(await sb.from("contratos").delete().eq("clinica_id", cid).eq("unidade_id", uid).in("id_semana", sem));
+    unwrap(await sb.from("contratos").insert(dados.contratos.map(({ fisio_nome, ...c }) => ({ ...c, clinica_id: cid, unidade_id: uid, fisioterapeuta_id: fisio_nome ? porNome[fisio_nome.toLowerCase()] || null : null }))));
     const semNome = dados.contratos.filter(c => c.fisio_nome && !porNome[c.fisio_nome.toLowerCase()]).length;
     if (semNome) dados.avisos.push(`${semNome} contrato(s) com fisioterapeuta não cadastrado ficaram sem profissional.`);
   }
@@ -137,25 +137,25 @@ export async function gravar(dados, ctx, arquivo, onProgress = () => {}) {
   onProgress("Financeiro", 0.6);
   if (dados.lancamentos.length) {
     const sem = [...new Set(dados.lancamentos.map(l => semanaDe(l.data)))];
-    unwrap(await sb.from("lancamentos").delete().eq("clinica_id", cid).in("id_semana", sem));
-    unwrap(await sb.from("lancamentos").insert(dados.lancamentos.map(l => ({ ...l, clinica_id: cid }))));
+    unwrap(await sb.from("lancamentos").delete().eq("clinica_id", cid).eq("unidade_id", uid).in("id_semana", sem));
+    unwrap(await sb.from("lancamentos").insert(dados.lancamentos.map(l => ({ ...l, clinica_id: cid, unidade_id: uid }))));
   }
   resumo.lancamentos = dados.lancamentos.length;
 
   onProgress("Leads por canal e reunião", 0.75);
-  if (dados.leads.length) unwrap(await sb.from("leads_canal").upsert(dados.leads.map(l => ({ ...l, clinica_id: cid })), { onConflict: "clinica_id,id_semana,canal" }));
-  if (dados.reunioes.length) unwrap(await sb.from("reunioes").upsert(dados.reunioes.map(r => ({ ...r, clinica_id: cid, updated_at: new Date().toISOString() })), { onConflict: "clinica_id,id_semana" }));
+  if (dados.leads.length) unwrap(await sb.from("leads_canal").upsert(dados.leads.map(l => ({ ...l, clinica_id: cid, unidade_id: uid })), { onConflict: "clinica_id,unidade_id,id_semana,canal" }));
+  if (dados.reunioes.length) unwrap(await sb.from("reunioes").upsert(dados.reunioes.map(r => ({ ...r, clinica_id: cid, updated_at: new Date().toISOString() })), { onConflict: "clinica_id,unidade_id,id_semana" }));
   resumo.leads_canal = dados.leads.length; resumo.reunioes = dados.reunioes.length;
 
   onProgress("Plano de ação", 0.9);
   if (dados.acoes.length) {
     const sem = [...new Set(dados.acoes.map(a => a.id_semana))];
-    unwrap(await sb.from("acoes").delete().eq("clinica_id", cid).in("id_semana", sem));
-    unwrap(await sb.from("acoes").insert(dados.acoes.map(a => ({ ...a, clinica_id: cid }))));
+    unwrap(await sb.from("acoes").delete().eq("clinica_id", cid).eq("unidade_id", uid).in("id_semana", sem));
+    unwrap(await sb.from("acoes").insert(dados.acoes.map(a => ({ ...a, clinica_id: cid, unidade_id: uid }))));
   }
   resumo.acoes = dados.acoes.length;
   resumo.semanas = dados.semanas;
-  await Importacoes.registrar({ clinica_id: cid, user_id: ctx.session.user.id, arquivo, resumo });
+  await Importacoes.registrar({ clinica_id: cid, unidade_id: uid, user_id: ctx.session.user.id, arquivo, resumo });
   onProgress("Concluído", 1);
   return resumo;
 }

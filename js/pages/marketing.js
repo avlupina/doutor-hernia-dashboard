@@ -2,14 +2,16 @@
 // Definições: MQL = avaliação agendada; SQL = avaliação realizada; CAC = marketing / novos pacientes.
 import { Resumo, Semanas } from "../api.js";
 import { el, kpi, fmt, secao, tabela, grafico, select, PALETA } from "../ui.js";
+import { agregarMeses } from "./mensal.js";
+import { agregarPorSemana } from "./painel.js";
 
 export async function render(root, ctx) {
-  const [meses, semanas] = await Promise.all([Resumo.mensal(ctx.clinica_id), Resumo.semanal(ctx.clinica_id)]);
+  const [meses, semanas] = await Promise.all([Resumo.mensal(ctx.u).then(agregarMeses), Resumo.semanal(ctx.u).then(agregarPorSemana)]);
   const opcoes = [["todos", "Todo o período"], ...meses.map(m => [m.mes, fmt.mes(m.mes)])];
   const mesesAtivos = [...new Set(semanas.filter(s => s.leads || s.aval_realizadas || s.atendimentos).map(s => s.mes))].sort();
   const sel = select(opcoes, {}, mesesAtivos.length ? mesesAtivos[mesesAtivos.length - 1] : "todos");
   root.append(el("div", { class: "topo" },
-    el("div", {}, el("h1", {}, "Marketing"), el("p", { class: "sub", style: "margin:0" }, "MQL = avaliação agendada · SQL = avaliação realizada · CAC = investimento em marketing ÷ novos pacientes.")),
+    el("div", {}, el("h1", {}, "Marketing" + (ctx.unidade ? " — " + ctx.unidade.nome : " — consolidado")), el("p", { class: "sub", style: "margin:0" }, "MQL = avaliação agendada · SQL = avaliação realizada · CAC = investimento em marketing ÷ novos pacientes.")),
     el("div", { class: "acoes" }, el("span", { class: "nota" }, "Período:"), sel)));
   const corpo = el("div"); root.append(corpo);
   sel.onchange = () => desenhar(sel.value);
@@ -47,7 +49,7 @@ export async function render(root, ctx) {
         el("div", { class: "hero", style: "font-size:20px" }, fmt.int(v))));
     });
     const gCanal = secao("Leads por canal de ingresso");
-    const canais = await Resumo.leadsCanal(ctx.clinica_id, sem.map(s => s.id_semana));
+    const canais = await Resumo.leadsCanal(ctx.u, sem.map(s => s.id_semana));
     const porCanal = {};
     for (const c of canais) porCanal[c.canal] = (porCanal[c.canal] || 0) + c.quantidade;
     const ordenado = Object.entries(porCanal).sort((a, b) => b[1] - a[1]);

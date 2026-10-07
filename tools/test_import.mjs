@@ -17,13 +17,13 @@ console.log("logado como", perfil.email, "| papel", perfil.papel, "| clínica", 
 
 const dados = analisar(readFileSync(arquivo).buffer);
 console.log("analisado:", { base: dados.base.length, contratos: dados.contratos.length, lancamentos: dados.lancamentos.length, leads: dados.leads.length, reunioes: dados.reunioes.length, acoes: dados.acoes.length, semanas: dados.semanas, fisios: dados.fisios, avisos: dados.avisos });
-const ctx = { clinica_id: perfil.clinica_id, session: data.session };
+const { data: uns } = await sb.from("unidades").select("id,nome").eq("clinica_id", perfil.clinica_id).order("nome"); const ctx = { clinica_id: perfil.clinica_id, unidade_id: uns[0].id, session: data.session }; console.log("unidade", uns[0].nome);
 const resumo = await gravar(dados, ctx, arquivo, (t, p) => console.log(`  ${Math.round(p * 100)}% ${t}`));
 console.log("gravado:", resumo);
 
-const sem = await Resumo.semanal(perfil.clinica_id);
+const sem = await Resumo.semanal(ctx);
 console.table(sem.map(s => ({ semana: s.id_semana, leads: s.leads, aval: s.aval_realizadas, contratos: s.contratos, atend: s.atendimentos, ocup: s.ocupacao_total, receita: s.receitas, gastos: s.gastos, cac: s.cac, cpl: s.custo_por_lead })));
-const mes = await Resumo.mensal(perfil.clinica_id);
+const mes = await Resumo.mensal(ctx);
 console.table(mes.map(m => ({ mes: m.mes, receita: m.receitas, fixos: m.gastos_fixos, var: m.gastos_variaveis, resultado: m.resultado, mc: m.margem_contribuicao, pe: m.ponto_equilibrio, cac: m.cac })));
-console.table(await Resumo.fisios(perfil.clinica_id));
+console.table(await Resumo.fisios(ctx));
 await sb.auth.signOut();

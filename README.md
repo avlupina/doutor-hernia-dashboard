@@ -25,7 +25,7 @@ js/api.js                  camada de dados (tabelas e views)
 js/ui.js                   componentes: KPIs, tabelas, gráficos, formulários, toasts
 js/importer.js             leitura da planilha padronizada e gravação
 js/pages/*.js              uma tela por arquivo
-supabase/migrations/       0001 schema + RLS, 0002 views + hardening
+supabase/migrations/       0001 schema + RLS, 0002 views (legado), 0003 unidades + config, 0004 views v2 por unidade
 tools/build_planilha_modelo.py   gera Base_Dados_Clinica.xlsx (modelo da planilha)
 tools/test_import.mjs      teste do importador fora do navegador
 Base_Dados_Clinica.xlsx    modelo da planilha de coleta (com dados de exemplo)
@@ -35,28 +35,31 @@ Base_Dados_Clinica.xlsx    modelo da planilha de coleta (com dados de exemplo)
 
 | Rota | Quem acessa | O que faz |
 |---|---|---|
-| `#/painel` | todos | Painel semanal com a pauta da reunião: abertura, crescimento, agenda, financeiro, experiência do paciente, operação, plano de ação 5W2H |
+| `#/painel` | todos | Painel Semanal (dashboard): crescimento, meios de ingresso, agenda/atendimentos e financeiro |
 | `#/mensal` | todos | Consolidação mensal, evolução e tabela |
 | `#/fisios` | todos | Comparativo por fisioterapeuta (avaliações, conversão, contratos, atendimentos, tempo médio) |
 | `#/marketing` | todos | Funil, custo por lead / MQL / SQL, CAC, leads por canal |
-| `#/financeiro` | todos (edição: admin/gestor) | Margem de contribuição, ponto de equilíbrio, simulador de cenários, classificação dos lançamentos |
+| `#/financeiro` | todos (edição: admin/gestor) | Margem de contribuição, ponto de equilíbrio, lançamentos (classificação fixo/variável) |
+| `#/projecoes` | todos | Simulador de cenários (pessimista/base/otimista) |
 | `#/semana` | admin, gestor | Lançamento manual de uma semana (base, fisios, leads por canal, contratos, reunião, ações) |
 | `#/importar` | admin, gestor | Importação da planilha padronizada |
-| `#/config` | admin, gestor | Nome da clínica, fisioterapeutas (slots 1 e 2 = Fisio 1 e 2 da planilha), metas |
-| `#/usuarios` | admin | Usuários da clínica, papéis, ativação e convites por e-mail |
+| `#/metas` | admin, gestor | Metas semanais e mensais por unidade |
+| `#/cadastros` | admin, gestor | Clínica, unidades, fisioterapeutas (slots 1 e 2 = Fisio 1 e 2 da planilha), chave do Gemini (admin) |
+| `#/assistente` | todos | Assistente de IA (Gemini) com os dados da unidade como contexto |
+| `#/usuarios` | todos (gestão: admin) | Troca da própria senha; admin: usuários, papéis, ativação e convites |
 
 **Papéis:** `admin` (tudo), `gestor` (lança/importa/edita), `fisio` e `leitura` (somente consulta).
 
 ## Modelo de dados (Supabase)
 
-- `clinicas`, `profiles` (1 por usuário; `papel`, `clinica_id`), `convites`
+- `clinicas`, `unidades` (filiais; toda tabela de dados tem `unidade_id`), `clinica_config` (chave do Gemini), `profiles` (1 por usuário; `papel`, `clinica_id`), `convites`
 - `semanas` (calendário ISO, segunda a domingo, `AAAA-Sww`)
 - `fisioterapeutas` (slot 1..9), `metas`
 - `base_semanal` + `base_semanal_fisio` (números coletados por semana)
 - `contratos` (avaliações e protocolos; `id_semana`/`mes` gerados pela data)
 - `lancamentos` (receitas, gastos — com `tipo_custo` fixo/variável —, impostos, marketing)
 - `leads_canal`, `reunioes`, `acoes` (5W2H), `importacoes`
-- Views: `v_resumo_semanal`, `v_resumo_mensal`, `v_fisio_semanal`, `v_leads_canal_semanal`, `v_pendencias`
+- Views: `v2_resumo_semanal`, `v2_resumo_mensal`, `v2_fisio_semanal`, `v2_leads_canal_semanal`, `v2_pendencias` (por unidade; o app consolida quando “Todas as unidades” está selecionado). As views `v_*` sem unidade são legado.
 
 Isolamento por clínica e por papel via RLS (`current_clinica_id()`, `pode_editar()`).
 Novo usuário: se houver convite para o e-mail, entra na clínica do convite com o papel definido;
@@ -70,7 +73,7 @@ Definições usadas nos indicadores:
 
 ## Como rodar
 
-1. Crie o projeto no Supabase e aplique `supabase/migrations/0001_schema.sql` e `0002_views.sql`
+1. Crie o projeto no Supabase e aplique as migrações de `supabase/migrations/` em ordem
    (SQL Editor ou `supabase db push`).
 2. Em `js/config.js`, informe `SUPABASE_URL` e a chave *publishable* do projeto.
 3. Em **Authentication → URL Configuration**, cadastre a URL onde o app será servido
@@ -98,3 +101,11 @@ A planilha é lida pelo navegador (SheetJS) e gravada via supabase-js:
 
 O Pages envia `Cache-Control: max-age=600`: após um deploy, o navegador pode usar módulos JS antigos por até 10 minutos.
 Ao publicar, incremente `APP_VERSION` em `js/config.js` e o `?v=` em `app.html`/`index.html`; se necessário, recarregue com Ctrl+Shift+R.
+
+## Marca
+
+Cores do manual Doutor Hérnia: azul `#09285f`, vermelho `#b30e0a`, cinza `#606062`. Logos em `assets/` (colorida, branca para fundo escuro, favicon).
+
+## Assistente de IA
+
+Usa a API do Gemini direto do navegador. O admin cadastra a chave em Cadastros; ela fica em `clinica_config` (RLS: só admin lê a tabela) e é entregue aos usuários autenticados da clínica pela função `assistente_config()`. O contexto enviado ao modelo é um JSON com as últimas 12 semanas, meses, fisioterapeutas, canais, pendências, ações em aberto e metas da unidade selecionada.

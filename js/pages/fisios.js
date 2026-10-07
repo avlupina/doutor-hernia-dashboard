@@ -3,12 +3,12 @@ import { Resumo, Fisios } from "../api.js";
 import { el, kpi, fmt, secao, tabela, grafico, select } from "../ui.js";
 
 export async function render(root, ctx) {
-  const [todos, fisios] = await Promise.all([Resumo.fisios(ctx.clinica_id), Fisios.listar(ctx.clinica_id)]);
+  const [todos, fisios] = await Promise.all([Resumo.fisios(ctx.u), Fisios.listar(ctx.u)]);
   const meses = [...new Set(todos.map(r => r.mes))].sort();
   const padrao = [...new Set(todos.filter(r => r.atendimentos || r.aval_realizadas).map(r => r.mes))].sort().pop() || meses[meses.length - 1];
   const sel = select([["todos", "Todo o período"], ...meses.map(m => [m, fmt.mes(m)])], {}, padrao || "todos");
   root.append(el("div", { class: "topo" },
-    el("div", {}, el("h1", {}, "Fisioterapeutas"), el("p", { class: "sub", style: "margin:0" }, "Avaliações, conversão, contratos, atendimentos e tempo de atendimento por profissional.")),
+    el("div", {}, el("h1", {}, "Fisioterapeutas" + (ctx.unidade ? " — " + ctx.unidade.nome : " — todas as unidades")), el("p", { class: "sub", style: "margin:0" }, "Avaliações, conversão, contratos, atendimentos e tempo de atendimento por profissional.")),
     el("div", { class: "acoes" }, el("span", { class: "nota" }, "Período:"), sel)));
   const corpo = el("div"); root.append(corpo);
   sel.onchange = () => desenhar(sel.value);
@@ -20,7 +20,7 @@ export async function render(root, ctx) {
     if (!rows.length) { corpo.append(secao("Sem dados", el("p", {}, "Nenhum lançamento por fisioterapeuta no período."))); return; }
     const porFisio = {};
     for (const r of rows) {
-      const f = porFisio[r.fisioterapeuta_id] ||= { nome: r.fisioterapeuta, aval: 0, contratos: 0, atend: 0, valor: 0, semanas: 0, tempos: [], desvios: [] };
+      const f = porFisio[r.fisioterapeuta] ||= { nome: r.fisioterapeuta, aval: 0, contratos: 0, atend: 0, valor: 0, semanas: 0, tempos: [], desvios: [] };
       f.aval += r.aval_realizadas; f.contratos += r.contratos; f.atend += r.atendimentos; f.valor += Number(r.valor_contratado); f.semanas++;
       if (r.tempo_medio_min != null) { f.tempos.push(Number(r.tempo_medio_min)); if (r.desvio_min != null) f.desvios.push(Number(r.desvio_min)); }
     }
