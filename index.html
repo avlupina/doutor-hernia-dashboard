@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar — Doutor Hérnia Dashboard</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.49.4/supabase.min.js"></script>
+</head>
+<body>
+  <div class="login">
+    <form class="cartao" id="form">
+      <div class="marca">Doutor Hérnia Dashboard</div>
+      <p class="sub" style="margin:0">Métricas operacionais e financeiras da clínica.</p>
+      <div class="abas">
+        <button type="button" class="ativo" data-aba="entrar">Entrar</button>
+        <button type="button" data-aba="cadastrar">Criar conta</button>
+      </div>
+      <label class="campo cad oculto"><span class="campo-label">Seu nome</span><input class="input" name="nome" autocomplete="name"></label>
+      <label class="campo cad oculto"><span class="campo-label">Nome da clínica</span><input class="input" name="clinica" placeholder="Doutor Hérnia — Barreiras"><small class="campo-hint">Se você recebeu um convite, a clínica do convite será usada.</small></label>
+      <label class="campo"><span class="campo-label">E-mail</span><input class="input" name="email" type="email" required autocomplete="email"></label>
+      <label class="campo"><span class="campo-label">Senha</span><input class="input" name="senha" type="password" required minlength="6" autocomplete="current-password"></label>
+      <button class="btn" id="enviar">Entrar</button>
+      <button type="button" class="btn sec" id="esqueci">Esqueci a senha</button>
+      <div id="msg" class="nota"></div>
+    </form>
+  </div>
+  <script type="module">
+    import { sb, getSession } from "./js/supabase.js";
+    const form = document.getElementById("form"), msg = document.getElementById("msg"), enviar = document.getElementById("enviar");
+    let aba = "entrar";
+    if (await getSession()) location.href = "app.html";
+    document.querySelectorAll(".abas button").forEach(b => b.onclick = () => {
+      aba = b.dataset.aba;
+      document.querySelectorAll(".abas button").forEach(x => x.classList.toggle("ativo", x === b));
+      document.querySelectorAll(".cad").forEach(x => x.classList.toggle("oculto", aba !== "cadastrar"));
+      enviar.textContent = aba === "entrar" ? "Entrar" : "Criar conta";
+      msg.textContent = "";
+    });
+    form.onsubmit = async e => {
+      e.preventDefault(); enviar.disabled = true; msg.textContent = "";
+      const f = new FormData(form), email = f.get("email").trim(), password = f.get("senha");
+      try {
+        if (aba === "entrar") {
+          const { error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          location.href = "app.html";
+        } else {
+          const { data, error } = await sb.auth.signUp({ email, password, options: { data: { nome: f.get("nome"), clinica: f.get("clinica") } } });
+          if (error) throw error;
+          if (data.session) location.href = "app.html";
+          else msg.textContent = "Conta criada. Confirme o e-mail que enviamos e depois faça login.";
+        }
+      } catch (err) { msg.textContent = err.message === "Invalid login credentials" ? "E-mail ou senha inválidos." : err.message; }
+      finally { enviar.disabled = false; }
+    };
+    document.getElementById("esqueci").onclick = async () => {
+      const email = form.email.value.trim();
+      if (!email) { msg.textContent = "Informe o e-mail para recuperar a senha."; return; }
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href.replace("index.html", "") + "app.html#/senha" });
+      msg.textContent = error ? error.message : "Enviamos um link de recuperação para o seu e-mail.";
+    };
+  </script>
+</body>
+</html>
