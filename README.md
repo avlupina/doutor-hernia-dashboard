@@ -7,7 +7,7 @@ importação da planilha padronizada, autenticação e controle de acessos com S
 
 ## Stack
 
-- **Front-end:** HTML + CSS + JavaScript (ES modules), sem build. Bibliotecas por CDN:
+- **Front-end:** HTML + CSS + JavaScript (ES modules), sem build. Bibliotecas servidas localmente em `vendor/` (sem CDN):
   `supabase-js`, `Chart.js`, `SheetJS (xlsx)`.
 - **Back-end:** Supabase (Postgres + Auth + RLS). Todo o cálculo de indicadores fica em views SQL.
 - Pensado para migrar depois para Node: a camada `js/api.js` concentra todo o acesso a dados;
