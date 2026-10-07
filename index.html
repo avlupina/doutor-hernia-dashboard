@@ -9,7 +9,7 @@
 </head>
 <body>
   <div class="login">
-    <form class="cartao" id="form">
+    <form class="cartao" id="form" onsubmit="return false" autocomplete="on">
       <div class="marca">Doutor Hérnia Dashboard</div>
       <p class="sub" style="margin:0">Métricas operacionais e financeiras da clínica.</p>
       <div class="abas">
@@ -29,7 +29,8 @@
     import { sb, getSession } from "./js/supabase.js";
     const form = document.getElementById("form"), msg = document.getElementById("msg"), enviar = document.getElementById("enviar");
     let aba = "entrar";
-    if (await getSession()) location.href = "app.html";
+    form.removeAttribute("onsubmit");
+    getSession().then(s => { if (s) location.href = "app.html"; });
     document.querySelectorAll(".abas button").forEach(b => b.onclick = () => {
       aba = b.dataset.aba;
       document.querySelectorAll(".abas button").forEach(x => x.classList.toggle("ativo", x === b));
