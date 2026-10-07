@@ -144,7 +144,7 @@ export async function gravar(dados, ctx, arquivo, onProgress = () => {}) {
 
   onProgress("Leads por canal e reunião", 0.75);
   if (dados.leads.length) unwrap(await sb.from("leads_canal").upsert(dados.leads.map(l => ({ ...l, clinica_id: cid, unidade_id: uid })), { onConflict: "clinica_id,unidade_id,id_semana,canal" }));
-  if (dados.reunioes.length) unwrap(await sb.from("reunioes").upsert(dados.reunioes.map(r => ({ ...r, clinica_id: cid, updated_at: new Date().toISOString() })), { onConflict: "clinica_id,unidade_id,id_semana" }));
+  if (dados.reunioes.length) unwrap(await sb.from("reunioes").upsert(dados.reunioes.map(r => ({ ...r, clinica_id: cid, unidade_id: uid, updated_at: new Date().toISOString() })), { onConflict: "clinica_id,unidade_id,id_semana" }));
   resumo.leads_canal = dados.leads.length; resumo.reunioes = dados.reunioes.length;
 
   onProgress("Plano de ação", 0.9);
