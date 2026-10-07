@@ -6,8 +6,8 @@ import { el, kpi, fmt, secao, tabela, grafico, select, PALETA } from "../ui.js";
 export async function render(root, ctx) {
   const [meses, semanas] = await Promise.all([Resumo.mensal(ctx.clinica_id), Resumo.semanal(ctx.clinica_id)]);
   const opcoes = [["todos", "Todo o período"], ...meses.map(m => [m.mes, fmt.mes(m.mes)])];
-  const ativos = meses.filter(m => m.leads || m.atendimentos || Number(m.receitas) > 0 || Number(m.marketing) > 0);
-  const sel = select(opcoes, {}, ativos.length ? ativos[ativos.length - 1].mes : "todos");
+  const mesesAtivos = [...new Set(semanas.filter(s => s.leads || s.aval_realizadas || s.atendimentos).map(s => s.mes))].sort();
+  const sel = select(opcoes, {}, mesesAtivos.length ? mesesAtivos[mesesAtivos.length - 1] : "todos");
   root.append(el("div", { class: "topo" },
     el("div", {}, el("h1", {}, "Marketing"), el("p", { class: "sub", style: "margin:0" }, "MQL = avaliação agendada · SQL = avaliação realizada · CAC = investimento em marketing ÷ novos pacientes.")),
     el("div", { class: "acoes" }, el("span", { class: "nota" }, "Período:"), sel)));
