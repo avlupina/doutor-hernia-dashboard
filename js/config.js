@@ -3,6 +3,8 @@ export const SUPABASE_URL = "https://dbdshmevwjjpjhnovopr.supabase.co";
 export const SUPABASE_KEY = "sb_publishable_ano7AZJBmc6zg1HJct7b5g_NUiUbRuV";
 
 export const APP_NAME = "Doutor Hérnia Dashboard";
+// Incrementar a cada publicação: evita que o navegador use módulos antigos em cache.
+export const APP_VERSION = "2026.10.07-4";
 
 // Listas padrão (as mesmas da planilha)
 export const LISTAS = {

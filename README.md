@@ -93,3 +93,8 @@ A planilha é lida pelo navegador (SheetJS) e gravada via supabase-js:
 1. Mover `js/api.js` para um backend (Express/Fastify) usando o mesmo schema e as mesmas views.
 2. Trocar o cliente direto do Supabase por chamadas HTTP à API, mantendo as assinaturas de `api.js`.
 3. Opcionalmente, mover `importer.js` para o servidor (upload do .xlsx) e empacotar o front com Vite.
+
+## Cache no GitHub Pages
+
+O Pages envia `Cache-Control: max-age=600`: após um deploy, o navegador pode usar módulos JS antigos por até 10 minutos.
+Ao publicar, incremente `APP_VERSION` em `js/config.js` e o `?v=` em `app.html`/`index.html`; se necessário, recarregue com Ctrl+Shift+R.
