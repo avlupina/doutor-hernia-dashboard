@@ -4,7 +4,7 @@ export const SUPABASE_KEY = "sb_publishable_ano7AZJBmc6zg1HJct7b5g_NUiUbRuV";
 
 export const APP_NAME = "Doutor Hérnia Dashboard";
 // Incrementar a cada publicação: evita que o navegador use módulos antigos em cache.
-export const APP_VERSION = "2026.10.08-1";
+export const APP_VERSION = "2026.10.08-2";
 
 // Primeiro mês com lançamentos (limite inferior dos seletores de período)
 export const PERIODO_INICIO = "2025-07-01";

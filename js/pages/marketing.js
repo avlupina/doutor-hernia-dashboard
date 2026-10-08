@@ -91,7 +91,7 @@ export async function render(root, ctx) {
     const etapas = [["Leads", T.leads, null], ["Conexão — aval. agendadas", T.mql, ef.leadMql], ["Oportunidade — aval. realizadas", T.sql, ef.mqlSql], ["Venda — contratos", T.vendas, ef.sqlVenda]];
     const maxv = Math.max(...etapas.map(e => e[1]), 1);
     const funil = el("div", { class: "funil-etapas" }, ...etapas.map(([n, v, tx], i) => el("div", { class: "funil-etapa" },
-      el("div", { class: "barra", style: `width:${Math.max(18, v / maxv * 100)}%;background:${i === 3 ? "#b30e0a" : PALETA[0]};opacity:${1 - i * 0.12}` }, `${n}: ${fmt.int(v)}`),
+      el("div", { class: "barra", style: `width:${Math.max(30, v / maxv * 100)}%;background:${i === 3 ? "#b30e0a" : PALETA[0]};opacity:${1 - i * 0.12}` }, `${n}: ${fmt.int(v)}`),
       el("div", { class: "taxa" }, tx == null ? "" : fmt.pct(tx) + " da etapa anterior"))));
     const outputT = tabela([{ k: 0, t: "Output" }, { k: 1, t: "", cls: "num" }], [
       ["Eficiência real do funil (vendas ÷ leads)", fmt.pct(ef.total)], ["Conversão aval. realizada → venda", fmt.pct(ef.sqlVenda) + (metaConv != null ? ` (meta ${fmt.pct(metaConv)})` : "")],

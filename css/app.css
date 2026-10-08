@@ -157,8 +157,8 @@ textarea.input { resize: vertical; min-height: 64px; }
 .funil { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .funil-etapas { display: flex; flex-direction: column; gap: 6px; }
 .funil-etapa { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 10px; }
-.funil-etapa .barra { height: 34px; border-radius: 6px; display: flex; align-items: center; padding: 0 10px; color: #fff; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; min-width: 60px; }
+.funil-etapa .barra { height: 40px; border-radius: 6px; display: flex; align-items: center; padding: 0 10px; color: #fff; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; min-width: 60px; }
 .funil-etapa .taxa { font-size: 12px; color: var(--text-2); text-align: right; }
-.io { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.io { display: grid; grid-template-columns: 1.1fr 1fr 1.1fr; gap: 14px; align-items: start; }
 .io table td:first-child { color: var(--text-2); }
-@media (max-width: 900px) { .funil, .io { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .io { grid-template-columns: 1fr 1fr; } } @media (max-width: 760px) { .funil, .io { grid-template-columns: 1fr; } }
