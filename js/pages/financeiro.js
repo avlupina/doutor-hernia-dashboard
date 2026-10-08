@@ -1,6 +1,7 @@
 // Financeiro — margem, ponto de equilíbrio, projeções de cenários e classificação dos lançamentos.
-import { Resumo, Lancamentos } from "../api.js";
-import { el, kpi, fmt, secao, tabela, grafico, input, campo, botao, select, toast, erro, hoje, addDias } from "../ui.js";
+import { Resumo, Lancamentos, mesesDisponiveis } from "../api.js";
+import { agregarPorSemana } from "./painel.js";
+import { el, kpi, fmt, secao, tabela, grafico, input, campo, botao, select, toast, erro, hoje, addDias, seletorPeriodo, evolucao } from "../ui.js";
 import { LISTAS } from "../config.js";
 import { agregarMeses } from "./mensal.js";
 
@@ -27,22 +28,39 @@ export async function render(root, ctx) {
       semClass > 0.005 ? el("p", { class: "nota" }, `⚠ ${fmt.brl(semClass)} em gastos sem classificação (fixo/variável) neste mês — classifique na lista abaixo para o ponto de equilíbrio ficar correto.`) : null));
   }
 
-  if (meses.length) {
-    const g = secao("Evolução mensal");
-    grafico(g, { tipo: "bar", labels: meses.map(m => fmt.mes(m.mes)), formatoY: fmt.brl, empilhado: false, datasets: [
-      { label: "Receita", data: meses.map(m => m.receitas) }, { label: "Gastos fixos + marketing", data: meses.map(m => Number(m.gastos_fixos) + Number(m.marketing)) },
-      { label: "Variáveis + impostos", data: meses.map(m => Number(m.gastos_variaveis) + Number(m.impostos)) }, { label: "Ponto de equilíbrio", data: meses.map(m => m.ponto_equilibrio), cor: "#8a8984" }] });
-    g.append(el("div", { class: "tabela-wrap" }, tabela([
+  // ---------------------------------------------------------------- evolução com seleção de período
+  const semanasTodas = agregarPorSemana(await Resumo.semanal(ctx.u));
+  const evoBox = el("div");
+  const periodo = seletorPeriodo(mesesDisponiveis(), desenharEvolucao, { chave: "fin" });
+  root.append(secao("Evolução — selecione o período", periodo), evoBox);
+  desenharEvolucao(periodo.valor());
+  function desenharEvolucao({ de, ate, mesDe, mesAte }) {
+    evoBox.replaceChildren();
+    const sem = semanasTodas.filter(x => x.inicio >= de && x.inicio <= ate), ms = meses.filter(m => m.mes >= mesDe && m.mes <= mesAte);
+    const soma = k => ms.reduce((a, m) => a + Number(m[k] || 0), 0);
+    const rec = soma("receitas"), gas = soma("gastos"), imp = soma("impostos"), mk = soma("marketing"), fx = soma("gastos_fixos"), vr = soma("gastos_variaveis");
+    const mc = rec ? (rec - vr - imp) / rec : null;
+    evoBox.append(secao("Totais do período", el("div", { class: "grid grid-kpi" },
+      kpi({ titulo: "Receita", valor: rec, formato: fmt.brl }), kpi({ titulo: "Gastos", valor: gas, formato: fmt.brl, sub: `fixos ${fmt.brl(fx)} · variáveis ${fmt.brl(vr)}` }),
+      kpi({ titulo: "Impostos", valor: imp, formato: fmt.brl }), kpi({ titulo: "Marketing", valor: mk, formato: fmt.brl }),
+      kpi({ titulo: "Resultado", valor: rec - gas - imp - mk, formato: fmt.brl }), kpi({ titulo: "Margem líquida", valor: rec ? (rec - gas - imp - mk) / rec : null, formato: fmt.pct }),
+      kpi({ titulo: "Margem de contribuição", valor: mc, formato: fmt.pct }), kpi({ titulo: "Ponto de equilíbrio médio/mês", valor: mc > 0 && ms.length ? (fx + mk) / mc / ms.length : null, formato: fmt.brl }))));
+    evolucao(evoBox, { titulo: "Receita, gastos e resultado", rowsSem: sem, rowsMes: ms, tipo: "bar", formatoY: fmt.brl,
+      series: [{ label: "Receita", k: "receitas" }, { label: "Gastos", k: "gastos" }, { label: "Impostos", k: "impostos" }, { label: "Marketing", k: "marketing" }, { label: "Resultado", k: "resultado" }] });
+    evolucao(evoBox, { titulo: "Receita × ponto de equilíbrio (mensal)", rowsSem: sem, rowsMes: ms, formatoY: fmt.brl,
+      series: [{ label: "Receita", k: "receitas" }, { label: "Fixos + marketing", k: r => Number(r.gastos_fixos || 0) + Number(r.marketing || 0) }, { label: "Ponto de equilíbrio", k: r => r.ponto_equilibrio ?? null, cor: "#8a8984" }] });
+    evolucao(evoBox, { titulo: "Margens", rowsSem: sem, rowsMes: ms, formatoY: fmt.pct,
+      series: [{ label: "Margem de contribuição", k: r => r.margem_contribuicao ?? (r.receitas ? (Number(r.receitas) - Number(r.gastos_variaveis || 0) - Number(r.impostos || 0)) / Number(r.receitas) : null) }, { label: "Margem líquida", k: r => r.margem_liquida ?? (r.receitas ? Number(r.resultado) / Number(r.receitas) : null) }] });
+    evoBox.append(secao("Tabela do período", el("div", { class: "tabela-wrap" }, tabela([
       { k: "mes", t: "Mês", f: fmt.mes }, { k: "receitas", t: "Receita", cls: "num", f: fmt.brl }, { k: "gastos_fixos", t: "Fixos", cls: "num", f: fmt.brl },
       { k: "gastos_variaveis", t: "Variáveis", cls: "num", f: fmt.brl }, { k: "impostos", t: "Impostos", cls: "num", f: fmt.brl }, { k: "marketing", t: "Marketing", cls: "num", f: fmt.brl },
       { k: "resultado", t: "Resultado", cls: "num", f: fmt.brl }, { k: "margem_contribuicao", t: "Margem contrib.", cls: "num", f: fmt.pct },
       { k: "margem_liquida", t: "Margem líquida", cls: "num", f: fmt.pct }, { k: "ponto_equilibrio", t: "Ponto de equilíbrio", cls: "num", f: fmt.brl },
-    ], [...meses].reverse())));
-    root.append(g);
+    ], [...ms].reverse(), { vazio: "Sem meses no período." }))));
   }
 
   // ---------------------------------------------------------------- lançamentos (classificação)
-  const de = input({ type: "date", value: addDias(hoje(), -60) }), ate = input({ type: "date", value: hoje() });
+  const de = input({ type: "date", value: addDias(hoje(), -90) }), ate = input({ type: "date", value: hoje() });
   const cat = select([["", "Todas as categorias"], ...LISTAS.categorias], {}, "");
   const lista = el("div");
   const sec = secao("Lançamentos", el("div", { class: "form-grid" }, campo("De", de), campo("Até", ate), campo("Categoria", cat)),

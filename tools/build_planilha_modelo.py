@@ -50,7 +50,7 @@ def title(ws, text, sub=None):
 
 # ---------------------------------------------------------------- Calendário
 weeks = []
-d = date(2026, 1, 5)
+d = date(2025, 6, 30)   # primeira semana ISO de julho/2025
 while d <= date(2027, 12, 27):
     iy, iw, _ = d.isocalendar()
     weeks.append((f"{iy}-S{iw:02d}", d, d + timedelta(days=6), f"{d.year}-{d.month:02d}"))
@@ -173,9 +173,9 @@ for c in bs_cols: DICT.append(("Base_Semanal", c[0], "preenchido" if c[1] and c[
 
 # exemplos: S39, S40 (completas) e S41 (apenas agenda da próxima semana)
 ex = {
-    "2026-S39": [38, 14, 2, 6, 5, 4, 3, 58, 52, 7, 6, 60, 54, 60, 50, 42.5, 6.1, 39.8, 5.4, "Exemplo — substitua pelos dados reais"],
-    "2026-S40": [45, 16, 1, 8, 6, 6, 4, 63, 57, 5, 9, 60, 57, 60, 55, 41.2, 5.8, 40.5, 4.9, "Exemplo — substitua pelos dados reais"],
-    "2026-S41": [None, None, None, None, None, None, None, None, None, None, None, 60, 44, 60, 38, None, None, None, None, "Exemplo — agenda já ocupada para a próxima semana"],
+    "2025-S27": [38, 14, 2, 6, 5, 4, 3, 58, 52, 7, 6, 60, 54, 60, 50, 42.5, 6.1, 39.8, 5.4, "Exemplo — substitua pelos dados reais"],
+    "2025-S28": [45, 16, 1, 8, 6, 6, 4, 63, 57, 5, 9, 60, 57, 60, 55, 41.2, 5.8, 40.5, 4.9, "Exemplo — substitua pelos dados reais"],
+    "2025-S29": [None, None, None, None, None, None, None, None, None, None, None, 60, 44, 60, 38, None, None, None, None, "Exemplo — agenda já ocupada para a próxima semana"],
 }
 widx = {w[0]: 4 + i for i, w in enumerate(weeks)}
 for wid, vals in ex.items():
@@ -208,13 +208,13 @@ dv(ct, f"J4:J{3+NROWS}", LIST_REF["Condição de pagamento"]); dv(ct, f"K4:K{3+N
 dv(ct, f"M4:M{3+NROWS}", LIST_REF["Status de pagamento"]); dv(ct, f"N4:N{3+NROWS}", LIST_REF["Canal de ingresso"])
 ct.freeze_panes = "D4"
 ct_ex = [
-    (date(2026, 9, 22), "Maria S. (exemplo)", "Avaliação", "Ariosto", "Avaliação inicial coluna", 1, 150, "À vista", "Pix", 1, "Pago", "Instagram"),
-    (date(2026, 9, 23), "João P. (exemplo)", "Protocolo", "Tássia", "Protocolo hérnia lombar — 20 sessões", 20, 3800, "Parcelado", "Cartão de crédito", 6, "Pago", "Google"),
-    (date(2026, 9, 25), "Carla M. (exemplo)", "Protocolo", "Ariosto", "Protocolo cervical — 12 sessões", 12, 2400, "À vista", "Pix", 1, "Pago", "Indicação"),
-    (date(2026, 9, 29), "Pedro L. (exemplo)", "Avaliação", "Tássia", "Avaliação inicial", 1, 150, "À vista", "Dinheiro", 1, "Pago", "WhatsApp direto"),
-    (date(2026, 9, 30), "Ana R. (exemplo)", "Protocolo", "Ariosto", "Protocolo hérnia lombar — 20 sessões", 20, 3800, "Parcelado", "Boleto", 4, "Pendente", "Instagram"),
-    (date(2026, 10, 1), "Lucas F. (exemplo)", "Protocolo", "Tássia", "Protocolo joelho — 16 sessões", 16, 3000, "Parcelado", "Cartão de crédito", 3, "Pago", "Indicação"),
-    (date(2026, 10, 2), "Beatriz C. (exemplo)", "Avaliação", "Ariosto", "Avaliação inicial", 1, 150, "À vista", "Pix", 1, "Pago", "Google"),
+    (date(2025, 6, 30), "Maria S. (exemplo)", "Avaliação", "Ariosto", "Avaliação inicial coluna", 1, 150, "À vista", "Pix", 1, "Pago", "Instagram"),
+    (date(2025, 7, 1), "João P. (exemplo)", "Protocolo", "Tássia", "Protocolo hérnia lombar — 20 sessões", 20, 3800, "Parcelado", "Cartão de crédito", 6, "Pago", "Google"),
+    (date(2025, 7, 3), "Carla M. (exemplo)", "Protocolo", "Ariosto", "Protocolo cervical — 12 sessões", 12, 2400, "À vista", "Pix", 1, "Pago", "Indicação"),
+    (date(2025, 7, 7), "Pedro L. (exemplo)", "Avaliação", "Tássia", "Avaliação inicial", 1, 150, "À vista", "Dinheiro", 1, "Pago", "WhatsApp direto"),
+    (date(2025, 7, 8), "Ana R. (exemplo)", "Protocolo", "Ariosto", "Protocolo hérnia lombar — 20 sessões", 20, 3800, "Parcelado", "Boleto", 4, "Pendente", "Instagram"),
+    (date(2025, 7, 9), "Lucas F. (exemplo)", "Protocolo", "Tássia", "Protocolo joelho — 16 sessões", 16, 3000, "Parcelado", "Cartão de crédito", 3, "Pago", "Indicação"),
+    (date(2025, 7, 10), "Beatriz C. (exemplo)", "Avaliação", "Ariosto", "Avaliação inicial", 1, 150, "À vista", "Pix", 1, "Pago", "Google"),
 ]
 for i, row in enumerate(ct_ex):
     r = 4 + i
@@ -243,19 +243,19 @@ for ci, c in enumerate(fn_cols, 1):
 dv(fn, f"D4:D{3+NROWS}", LIST_REF["Categoria financeira"]); dv(fn, f"E4:E{3+NROWS}", LIST_REF["Tipo de custo"]); dv(fn, f"H4:H{3+NROWS}", LIST_REF["Status de pagamento"])
 fn.freeze_panes = "D4"
 fn_ex = [
-    (date(2026, 9, 22), "Receita", None, "Avaliação — Maria S.", 150, "Pago", date(2026, 9, 22), "Maria S."),
-    (date(2026, 9, 23), "Receita", None, "Protocolo — João P. (1/6)", 633.33, "Pago", date(2026, 9, 23), "João P."),
-    (date(2026, 9, 25), "Receita", None, "Protocolo — Carla M.", 2400, "Pago", date(2026, 9, 25), "Carla M."),
-    (date(2026, 9, 25), "Gasto", "Fixo", "Folha de pagamento — recepção", 2800, "Pago", date(2026, 9, 25), "Equipe"),
-    (date(2026, 9, 26), "Marketing", None, "Impulsionamento Instagram", 600, "Pago", date(2026, 9, 26), "Meta Ads"),
-    (date(2026, 9, 29), "Receita", None, "Avaliação — Pedro L.", 150, "Pago", date(2026, 9, 29), "Pedro L."),
-    (date(2026, 9, 30), "Receita", None, "Protocolo — Ana R. (1/4)", 950, "Pendente", date(2026, 10, 10), "Ana R."),
-    (date(2026, 10, 1), "Receita", None, "Protocolo — Lucas F. (1/3)", 1000, "Pago", date(2026, 10, 1), "Lucas F."),
-    (date(2026, 10, 1), "Gasto", "Fixo", "Aluguel", 4500, "Pago", date(2026, 10, 1), "Imobiliária"),
-    (date(2026, 10, 1), "Gasto", "Variável", "Material de consumo (bandagens, eletrodos)", 380, "Pago", date(2026, 10, 1), "Fornecedor"),
-    (date(2026, 10, 2), "Imposto", None, "Simples Nacional — DAS", 1850, "Pago", date(2026, 10, 20), "Receita Federal"),
-    (date(2026, 10, 2), "Marketing", None, "Google Ads", 700, "Pago", date(2026, 10, 2), "Google"),
-    (date(2026, 10, 2), "Receita", None, "Protocolo — Roberto A. (2/5)", 760, "Atrasado", date(2026, 9, 15), "Roberto A."),
+    (date(2025, 6, 30), "Receita", None, "Avaliação — Maria S.", 150, "Pago", date(2025, 6, 30), "Maria S."),
+    (date(2025, 7, 1), "Receita", None, "Protocolo — João P. (1/6)", 633.33, "Pago", date(2025, 7, 1), "João P."),
+    (date(2025, 7, 3), "Receita", None, "Protocolo — Carla M.", 2400, "Pago", date(2025, 7, 3), "Carla M."),
+    (date(2025, 7, 3), "Gasto", "Fixo", "Folha de pagamento — recepção", 2800, "Pago", date(2025, 7, 3), "Equipe"),
+    (date(2025, 7, 4), "Marketing", None, "Impulsionamento Instagram", 600, "Pago", date(2025, 7, 4), "Meta Ads"),
+    (date(2025, 7, 7), "Receita", None, "Avaliação — Pedro L.", 150, "Pago", date(2025, 7, 7), "Pedro L."),
+    (date(2025, 7, 8), "Receita", None, "Protocolo — Ana R. (1/4)", 950, "Pendente", date(2025, 7, 18), "Ana R."),
+    (date(2025, 7, 9), "Receita", None, "Protocolo — Lucas F. (1/3)", 1000, "Pago", date(2025, 7, 9), "Lucas F."),
+    (date(2025, 7, 9), "Gasto", "Fixo", "Aluguel", 4500, "Pago", date(2025, 7, 9), "Imobiliária"),
+    (date(2025, 7, 9), "Gasto", "Variável", "Material de consumo (bandagens, eletrodos)", 380, "Pago", date(2025, 7, 9), "Fornecedor"),
+    (date(2025, 7, 10), "Imposto", None, "Simples Nacional — DAS", 1850, "Pago", date(2025, 7, 20), "Receita Federal"),
+    (date(2025, 7, 10), "Marketing", None, "Google Ads", 700, "Pago", date(2025, 7, 10), "Google"),
+    (date(2025, 7, 10), "Receita", None, "Protocolo — Roberto A. (2/5)", 760, "Atrasado", date(2025, 6, 23), "Roberto A."),
 ]
 for i, row in enumerate(fn_ex):
     r = 4 + i
@@ -272,8 +272,8 @@ header(lc, HR, ["id_semana", "Canal", "Quantidade", "Observações"], [12, 20, 1
 style_range(lc, 4, 3 + NROWS, 1, 4, fill=fill_in); style_range(lc, 4, 3 + NROWS, 3, 3, fill=fill_in, fmt=INT)
 dv(lc, f"A4:A{3+NROWS}", CAL_A); dv(lc, f"B4:B{3+NROWS}", LIST_REF["Canal de ingresso"])
 lc.freeze_panes = "A4"
-lc_ex = [("2026-S39", "Instagram", 16), ("2026-S39", "Google", 10), ("2026-S39", "Indicação", 7), ("2026-S39", "WhatsApp direto", 5),
-         ("2026-S40", "Instagram", 20), ("2026-S40", "Google", 12), ("2026-S40", "Indicação", 8), ("2026-S40", "WhatsApp direto", 5)]
+lc_ex = [("2025-S27", "Instagram", 16), ("2025-S27", "Google", 10), ("2025-S27", "Indicação", 7), ("2025-S27", "WhatsApp direto", 5),
+         ("2025-S28", "Instagram", 20), ("2025-S28", "Google", 12), ("2025-S28", "Indicação", 8), ("2025-S28", "WhatsApp direto", 5)]
 for i, row in enumerate(lc_ex):
     for j, v in enumerate(row): lc.cell(row=4 + i, column=1 + j, value=v)
     lc.cell(row=4 + i, column=4, value="Exemplo")
@@ -297,14 +297,14 @@ header(rs, HR, [c[0] for c in rs_cols], [c[1] for c in rs_cols])
 style_range(rs, 4, 3 + 200, 1, len(rs_cols), fill=fill_in, align=wrap)
 dv(rs, "A4:A203", CAL_A); dv(rs, "B4:B203", LIST_REF["Resultado geral"]); dv(rs, "H4:H203", LIST_REF["Sim/Não"])
 rs.freeze_panes = "B4"
-rs_ex = ["2026-S40", "Melhor", "Receita acima da meta; 4 protocolos fechados por indicação", "Taxa de ocupação da tarde abaixo de 90%; 5 cancelamentos de atendimento",
+rs_ex = ["2025-S28", "Melhor", "Receita acima da meta; 4 protocolos fechados por indicação", "Taxa de ocupação da tarde abaixo de 90%; 5 cancelamentos de atendimento",
          "Roberto A. — 2 faltas seguidas e parcela em atraso; Ana R. — reclamou de espera", "Pacientes elogiaram o novo protocolo de alongamento",
          "Espera de 15 min na recepção em dois dias (acúmulo às 8h)", "Sim", "Atraso na abertura da recepção às 7h50",
          "Recepção pede roteiro de confirmação de consulta por WhatsApp", "Agenda da manhã já com 73% ocupada; reforçar captação para a tarde",
          "Manutenção do ar-condicionado da sala 2 agendada para quinta", "Receita R$ 32.000; 10 avaliações; ocupação total ≥ 85%",
          "Confirmação de consulta 24h antes por WhatsApp; escala da recepção a partir de 7h40"]
 for j, v in enumerate(rs_ex): rs.cell(row=4, column=1 + j, value=v)
-rs.cell(row=5, column=1, value="2026-S39"); rs.cell(row=5, column=2, value="Igual"); rs.cell(row=5, column=3, value="Exemplo — substitua pelos dados reais")
+rs.cell(row=5, column=1, value="2025-S27"); rs.cell(row=5, column=2, value="Igual"); rs.cell(row=5, column=3, value="Exemplo — substitua pelos dados reais")
 for c in rs_cols: DICT.append(("Reuniao_Semanal", c[0], "preenchido", c[2]))
 RS = lambda col: f"Reuniao_Semanal!${col}$4:${col}$203"
 
@@ -326,9 +326,9 @@ for ci, c in enumerate(pa_cols, 1):
 dv(pa, f"A4:A{3+NROWS}", CAL_A); dv(pa, f"K4:K{3+NROWS}", LIST_REF["Status da ação"])
 pa.freeze_panes = "C4"
 pa_ex = [
-    ("2026-S40", "Espera na recepção às 8h", "Antecipar abertura da recepção", "Reduzir espera e reclamações", "Recepção", date(2026, 10, 6), "Recepção", "Escala iniciando às 7h40; check-in antecipado", 0, "Em andamento"),
-    ("2026-S40", "Cancelamentos de atendimento", "Confirmar consultas 24h antes por WhatsApp", "Reduzir faltas e liberar horários", "Recepção", date(2026, 10, 9), "Recepção", "Modelo de mensagem + lista diária de confirmação", 0, "A fazer"),
-    ("2026-S40", "Ocupação da tarde < 90%", "Campanha de captação para horários da tarde", "Elevar taxa de ocupação", "Marketing", date(2026, 10, 16), "Ariosto", "Anúncio segmentado + oferta de avaliação à tarde", 400, "A fazer"),
+    ("2025-S28", "Espera na recepção às 8h", "Antecipar abertura da recepção", "Reduzir espera e reclamações", "Recepção", date(2025, 7, 14), "Recepção", "Escala iniciando às 7h40; check-in antecipado", 0, "Em andamento"),
+    ("2025-S28", "Cancelamentos de atendimento", "Confirmar consultas 24h antes por WhatsApp", "Reduzir faltas e liberar horários", "Recepção", date(2025, 7, 17), "Recepção", "Modelo de mensagem + lista diária de confirmação", 0, "A fazer"),
+    ("2025-S28", "Ocupação da tarde < 90%", "Campanha de captação para horários da tarde", "Elevar taxa de ocupação", "Marketing", date(2025, 7, 24), "Ariosto", "Anúncio segmentado + oferta de avaliação à tarde", 400, "A fazer"),
 ]
 for i, row in enumerate(pa_ex):
     pa.cell(row=4 + i, column=1, value=row[0])
@@ -434,7 +434,7 @@ title(pn, "Painel de resultados — reunião semanal", "Escolha a semana na cél
 for c, w in zip("ABCDEFGHI", [3, 42, 16, 16, 12, 14, 14, 16, 14]):
     pn.column_dimensions[c].width = w
 pn["B3"] = "Semana selecionada"; pn["B3"].font = f_bold
-pn["C3"] = "2026-S40"; pn["C3"].fill = fill_in; pn["C3"].font = f_bold; pn["C3"].border = border; pn["C3"].alignment = center
+pn["C3"] = "2025-S28"; pn["C3"].fill = fill_in; pn["C3"].font = f_bold; pn["C3"].border = border; pn["C3"].alignment = center
 dv(pn, "C3", CAL_A)
 pn["D3"] = "Semana anterior"; pn["D3"].font = f_bold
 pn["E3"] = f"=IFERROR(INDEX({CAL_A},MATCH($C$3,{CAL_A},0)-1),\"\")"; pn["E3"].border = border; pn["E3"].alignment = center
@@ -661,7 +661,7 @@ lm["A17"] = "Premissas"; lm["A17"].font = f_bold
 prem = [
     "Semanas seguem o padrão ISO (segunda a domingo), identificadas como AAAA-Sww; o mês de uma semana é o mês da sua data de início.",
     "Contratos e lançamentos financeiros recebem semana e mês automaticamente pela data informada.",
-    "As linhas marcadas como 'Exemplo' (semanas 2026-S39, S40 e S41) são ilustrativas e devem ser substituídas pelos dados reais.",
+    "O calendário começa em julho/2025 (semana 2025-S27, de 30/06 a 06/07). As linhas marcadas como 'Exemplo' (semanas 2025-S27, S28 e S29 e lançamentos de julho/2025) mostram o formato esperado e devem ser substituídas pelos dados reais.",
     "Lançamentos com status Cancelado não entram nos totais financeiros.",
     "O 'Resultado geral (automático)' do painel compara seis indicadores com a semana anterior; o resultado registrado pela equipe fica na Reuniao_Semanal.",
     "Fórmulas usam SUMIFS/COUNTIFS/INDEX/MATCH, compatíveis com Excel 2007+, LibreOffice e Google Sheets.",

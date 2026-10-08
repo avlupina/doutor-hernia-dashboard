@@ -44,6 +44,8 @@ p.sub { color: var(--text-2); margin: 0 0 16px; }
 main { padding: 24px 28px 48px; max-width: 1280px; }
 .topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 .topo .acoes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.topo .acoes.linha { align-items: flex-end; }
+.btn.alinhado { height: 36px; }
 
 /* componentes */
 .secao { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 18px; }
@@ -145,3 +147,18 @@ textarea.input { resize: vertical; min-height: 64px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; cursor: pointer; color: var(--text-2); }
 .chip:hover { border-color: var(--primary-2); color: var(--primary); }
+
+/* seletor de período e evolução */
+.periodo { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.periodo .campo { min-width: 150px; }
+.subnav { display: flex; gap: 6px; margin-bottom: 14px; }
+.subnav a { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--text-2); text-decoration: none; font-weight: 600; }
+.subnav a.ativo { background: var(--primary); color: #fff; border-color: var(--primary); }
+.funil { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.funil-etapas { display: flex; flex-direction: column; gap: 6px; }
+.funil-etapa { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 10px; }
+.funil-etapa .barra { height: 34px; border-radius: 6px; display: flex; align-items: center; padding: 0 10px; color: #fff; font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; min-width: 60px; }
+.funil-etapa .taxa { font-size: 12px; color: var(--text-2); text-align: right; }
+.io { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.io table td:first-child { color: var(--text-2); }
+@media (max-width: 900px) { .funil, .io { grid-template-columns: 1fr; } }

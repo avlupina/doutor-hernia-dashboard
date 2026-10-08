@@ -65,7 +65,7 @@ async function navegar() {
   const hash = location.hash.replace(/^#\/?/, "");
   const [rota, ...resto] = hash.split("/");
   const nome = ROTAS[rota] ? rota : "painel";
-  document.querySelectorAll(".sidebar a").forEach(a => a.classList.toggle("ativo", a.getAttribute("href") === "#/" + nome));
+  document.querySelectorAll(".sidebar a").forEach(a => a.classList.toggle("ativo", a.getAttribute("href").startsWith("#/" + nome)));
   main.replaceChildren(el("p", { class: "sub" }, "Carregando…"));
   try {
     const mod = await ROTAS[nome]();

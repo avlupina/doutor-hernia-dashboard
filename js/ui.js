@@ -137,3 +137,44 @@ export function grafico(container, cfg, altura = 260) {
   new window.Chart(canvas, { type: cfg.tipo || "bar", data: { labels: cfg.labels, datasets: cfg.datasets }, options: opts });
   return wrap;
 }
+
+// ------------------------------------------------------------------ seletor de período
+/**
+ * Seletor de período (de/até em meses, com atalhos). onChange({de, ate}) recebe datas ISO (primeiro dia do mês inicial, último do final).
+ * meses: lista AAAA-MM disponível (de PERIODO_INICIO ao mês atual).
+ */
+export function seletorPeriodo(meses, onChange, { padraoMeses = 6, chave = "periodo" } = {}) {
+  let salvo = null; try { salvo = JSON.parse(sessionStorage.getItem("periodo:" + chave) || "null"); } catch {}
+  const ini = salvo?.de || meses[Math.max(0, meses.length - padraoMeses)], fim = salvo?.ate || meses[meses.length - 1];
+  const de = select(meses.map(m => [m, fmt.mes(m)]), {}, ini), ate = select(meses.map(m => [m, fmt.mes(m)]), {}, fim);
+  const atalho = (n, t) => botao(t, () => { de.value = n === 0 ? meses[0] : meses[Math.max(0, meses.length - n)]; ate.value = meses[meses.length - 1]; emitir(); }, "btn sec mini");
+  const box = el("div", { class: "periodo" }, campo("De", de), campo("Até", ate), atalho(3, "3 meses"), atalho(6, "6 meses"), atalho(12, "12 meses"), atalho(0, "Desde o início"));
+  de.onchange = ate.onchange = emitir;
+  function emitir() {
+    if (de.value > ate.value) ate.value = de.value;
+    const [y, m] = ate.value.split("-").map(Number);
+    const r = { de: de.value + "-01", ate: new Date(y, m, 0).toISOString().slice(0, 10), mesDe: de.value, mesAte: ate.value };
+    try { sessionStorage.setItem("periodo:" + chave, JSON.stringify({ de: de.value, ate: ate.value })); } catch {}
+    onChange(r);
+  }
+  box.valor = () => { const [y, m] = ate.value.split("-").map(Number); return { de: de.value + "-01", ate: new Date(y, m, 0).toISOString().slice(0, 10), mesDe: de.value, mesAte: ate.value }; };
+  return box;
+}
+
+/** Gráfico de evolução com alternância semanal/mensal. series: [{label, k, cor?}] ; rowsSem/rowsMes com campos id_semana/mes. */
+export function evolucao(container, { titulo, rowsSem, rowsMes, series, formatoY, tipo = "line", altura = 260, max }) {
+  const sec = el("section", { class: "secao" });
+  const modo = select([["mes", "Por mês"], ["semana", "Por semana"]], { style: "width:auto" }, rowsMes.length >= 2 || rowsSem.length > 20 ? "mes" : "semana");
+  sec.append(el("div", { class: "topo", style: "margin-bottom:8px" }, el("h2", { style: "margin:0" }, titulo), modo));
+  const area = el("div"); sec.append(area);
+  const desenhar = () => {
+    area.replaceChildren();
+    const rows = modo.value === "mes" ? rowsMes : rowsSem;
+    if (!rows.length) { area.append(el("p", { class: "nota" }, "Sem dados no período.")); return; }
+    grafico(area, { tipo, labels: rows.map(r => modo.value === "mes" ? fmt.mes(r.mes) : r.id_semana.slice(2)), formatoY, max,
+      datasets: series.map(s => ({ label: s.label, cor: s.cor, data: rows.map(r => typeof s.k === "function" ? s.k(r) : r[s.k]) })) }, altura);
+  };
+  modo.onchange = desenhar; desenhar();
+  container.append(sec);
+  return sec;
+}

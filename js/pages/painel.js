@@ -10,10 +10,10 @@ export async function render(root, ctx) {
   const semanas = await Semanas.disponiveis(padrao, 8);
   const topo = el("div", { class: "topo" },
     el("div", {}, el("h1", {}, "Painel Semanal"), el("p", { class: "sub", style: "margin:0" }, ctx.unidade ? `Unidade ${ctx.unidade.nome}` : "Consolidado de todas as unidades")),
-    el("div", { class: "acoes" },
-      el("span", { class: "nota" }, "Semana:"),
-      select(semanas.map(s => [s.id_semana, `${s.id_semana}  (${fmt.data(s.inicio)} – ${fmt.data(s.fim)})${idsComDados.has(s.id_semana) ? "" : "  · sem dados"}`]), { id: "sel-semana" }, padrao),
-      ctx.editor ? botao("Lançar / editar", () => location.hash = "#/semana/" + document.getElementById("sel-semana").value, "btn sec") : null));
+    el("div", { class: "acoes linha" },
+      el("label", { class: "campo", style: "min-width:340px" }, el("span", { class: "campo-label" }, "Semana"),
+        select(semanas.map(s => [s.id_semana, `${s.id_semana}  (${fmt.data(s.inicio)} – ${fmt.data(s.fim)})${idsComDados.has(s.id_semana) ? "" : "  · sem dados"}`]), { id: "sel-semana" }, padrao)),
+      ctx.editor ? botao("Lançar / editar", () => location.hash = "#/semana/" + document.getElementById("sel-semana").value, "btn sec alinhado") : null));
   const corpo = el("div");
   root.append(topo, corpo);
   const sel = topo.querySelector("#sel-semana");

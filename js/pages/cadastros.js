@@ -51,6 +51,18 @@ export async function render(root, ctx) {
       }))));
   }
 
+  // ---- zerar dados (admin)
+  if (ctx.admin && ctx.unidade_id) {
+    const confirmar = input({ placeholder: `digite ZERAR para confirmar` });
+    root.append(secao(`Zerar dados — ${ctx.unidade.nome}`, el("p", { class: "nota" }, "Apaga todos os lançamentos desta unidade (semanas, contratos, financeiro, leads por canal, reuniões, ações e histórico de importações). Metas, equipe e usuários são mantidos. Não há como desfazer."),
+      el("div", { class: "form-grid" }, campo("Confirmação", confirmar)),
+      el("div", { class: "form-acoes" }, botao("Zerar dados da unidade", async () => {
+        if (confirmar.value.trim().toUpperCase() !== "ZERAR") return toast("Digite ZERAR no campo de confirmação.", "erro");
+        try { const r = await Clinica.zerarUnidade(ctx.unidade_id); confirmar.value = ""; toast("Dados apagados: " + Object.entries(r || {}).map(([k, v]) => `${k} ${v}`).join(", "), "ok"); }
+        catch (e) { erro(e.message?.includes("zerar_unidade") ? new Error("Função zerar_unidade não encontrada no banco. Aplique supabase/migrations/0005_zerar_unidade.sql no SQL Editor.") : e); }
+      }, "btn perigo"))));
+  }
+
   // ---- assistente de IA (admin)
   if (ctx.admin) {
     const cfg = (await Clinica.config(ctx.clinica_id)) || {};

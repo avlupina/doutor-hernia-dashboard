@@ -178,6 +178,7 @@ export const Clinica = {
   async renomear(id, nome) { return unwrap(await sb.from("clinicas").update({ nome }).eq("id", id)); },
   async config(clinica_id) { return unwrap(await sb.from("clinica_config").select("*").eq("clinica_id", clinica_id).maybeSingle()); },
   async salvarConfig(row) { return unwrap(await sb.from("clinica_config").upsert({ ...row, updated_at: new Date().toISOString() })); },
+  async zerarUnidade(unidade_id) { return unwrap(await sb.rpc("zerar_unidade", { p_unidade: unidade_id })); },
   async assistenteConfig() { const rows = unwrap(await sb.rpc("assistente_config")); return rows?.[0] || null; },
 };
 
