@@ -68,7 +68,13 @@ async function navegar() {
   document.querySelectorAll(".sidebar a").forEach(a => a.classList.toggle("ativo", a.getAttribute("href").startsWith("#/" + nome)));
   main.replaceChildren(el("p", { class: "sub" }, "Carregando…"));
   try {
-    const mod = await ROTAS[nome]();
+    let mod;
+    try { mod = await ROTAS[nome](); }
+    catch (e) { // módulo não baixou (deploy em andamento / cache): tenta de novo sem cache
+      if (!/fetch dynamically imported module|Importing a module script failed/i.test(e.message || "")) throw e;
+      await fetch(`js/pages/${nome}.js`, { cache: "reload" }).catch(() => {});
+      mod = await import(`./pages/${nome}.js?r=${Date.now()}`);
+    }
     const root = el("div");
     await mod.render(root, { ...ctx, params: resto });
     main.replaceChildren(root);
