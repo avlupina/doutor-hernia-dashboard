@@ -18,3 +18,7 @@ begin
   return r;
 end $$;
 revoke execute on function public.zerar_unidade(uuid) from anon, public;
+
+-- Permite excluir usuários no painel de Authentication sem erro de chave estrangeira
+alter table public.convites drop constraint convites_criado_por_fkey, add constraint convites_criado_por_fkey foreign key (criado_por) references auth.users(id) on delete set null;
+alter table public.importacoes drop constraint importacoes_user_id_fkey, add constraint importacoes_user_id_fkey foreign key (user_id) references auth.users(id) on delete set null;
