@@ -167,3 +167,7 @@ textarea.input { resize: vertical; min-height: 64px; }
 .grupo-periodo .campo { min-width: 140px; }
 .topo .divisor { width: 1px; height: 44px; background: var(--border); margin: 0 4px; }
 @media (max-width: 1000px) { .topo .divisor { display: none; } }
+
+.grupo-periodo .grupo-rotulo { font-weight: 700; color: var(--primary); align-self: center; padding: 0 6px 0 2px; }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 14px; }
+.check { font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; }

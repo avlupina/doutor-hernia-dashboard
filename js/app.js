@@ -5,7 +5,8 @@ import { erro, el } from "./ui.js";
 
 const ROTAS = {
   painel: () => import("./pages/painel.js"),
-  mensal: () => import("./pages/mensal.js"),
+  resultados: () => import("./pages/painel.js"),
+  comparar: () => import("./pages/comparar.js"),
   fisios: () => import("./pages/fisios.js"),
   financeiro: () => import("./pages/financeiro.js"),
   projecoes: () => import("./pages/projecoes.js"),
@@ -64,7 +65,7 @@ function aplicarUnidade(id) {
 async function navegar() {
   const hash = location.hash.replace(/^#\/?/, "");
   const [rota, ...resto] = hash.split("/");
-  const nome = ROTAS[rota] ? rota : "painel";
+  const nome = ROTAS[rota] ? (rota === "resultados" ? "painel" : rota) : "painel";
   document.querySelectorAll(".sidebar a").forEach(a => a.classList.toggle("ativo", a.getAttribute("href").startsWith("#/" + nome)));
   main.replaceChildren(el("p", { class: "sub" }, "Carregando…"));
   try {
