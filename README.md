@@ -109,3 +109,7 @@ Cores do manual Doutor Hérnia: azul `#09285f`, vermelho `#b30e0a`, cinza `#6060
 ## Assistente de IA
 
 Usa a API do Gemini direto do navegador. O admin cadastra a chave em Cadastros; ela fica em `clinica_config` (RLS: só admin lê a tabela) e é entregue aos usuários autenticados da clínica pela função `assistente_config()`. O contexto enviado ao modelo é um JSON com as últimas 12 semanas, meses, fisioterapeutas, canais, pendências, ações em aberto e metas da unidade selecionada.
+
+## Importação dos relatórios da franqueadora
+
+Em **Importar → Relatórios da franquia**, envie os .xls exportados do sistema da franqueadora (são tabelas HTML): Agendamentos, Tratamentos e Contas a receber. O tipo é detectado pelo cabeçalho. Regras em `js/importer_franquia.js` (avaliação = 1º agendamento do paciente; receita por parcela; valor do protocolo = soma das parcelas; parcelas pendentes com descrição de erro/duplicidade/cancelamento viram "Cancelado"). Registros recebem `ref_externa` (`agend:ID`, `trat:ID`, `rec:Código`) e são atualizados em reimportações. A capacidade semanal de horários da unidade (Cadastros) alimenta a taxa de ocupação.

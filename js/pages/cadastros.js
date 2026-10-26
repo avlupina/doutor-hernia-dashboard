@@ -17,17 +17,21 @@ export async function render(root, ctx) {
   const uLista = el("div");
   const desenharUnidades = () => uLista.replaceChildren(tabela([
     { k: "nome", t: "Unidade" }, { k: "cidade", t: "Cidade" }, { k: "uf", t: "UF" }, { k: "inicio", t: "Início das operações", f: fmt.data },
+    { k: r => r.cap_manha_semana ? `${r.cap_manha_semana} / ${r.cap_tarde_semana || 0}` : "—", t: "Horários/semana (manhã / tarde)", cls: "num" },
     { k: "ativa", t: "Ativa", f: (v, r) => { const c = el("input", { type: "checkbox" }); c.checked = v; c.onchange = async () => { try { await Unidades.salvar({ ...r, ativa: c.checked }); await ctx.recarregarUnidades(); toast("Unidade atualizada.", "ok"); } catch (e) { erro(e); } }; return c; } },
     { k: "id", t: "", f: (v, r) => botao("editar", () => formUnidade(r), "btn sec mini") },
   ], ctx.unidades, { vazio: "Nenhuma unidade." }));
   desenharUnidades();
   const uForm = el("div");
   function formUnidade(r = {}) {
-    const f = { nome: input({ value: r.nome || "" }), cidade: input({ value: r.cidade || "" }), uf: input({ value: r.uf || "BA", maxlength: 2 }), inicio: input({ type: "date", value: r.inicio || "" }) };
-    uForm.replaceChildren(el("h3", {}, r.id ? "Editar unidade" : "Nova unidade"), el("div", { class: "form-grid" }, campo("Nome", f.nome), campo("Cidade", f.cidade), campo("UF", f.uf), campo("Início das operações", f.inicio)),
+    const f = { nome: input({ value: r.nome || "" }), cidade: input({ value: r.cidade || "" }), uf: input({ value: r.uf || "BA", maxlength: 2 }), inicio: input({ type: "date", value: r.inicio || "" }),
+      capM: input({ type: "number", min: 0, value: r.cap_manha_semana ?? "" }), capT: input({ type: "number", min: 0, value: r.cap_tarde_semana ?? "" }) };
+    uForm.replaceChildren(el("h3", {}, r.id ? "Editar unidade" : "Nova unidade"), el("div", { class: "form-grid" }, campo("Nome", f.nome), campo("Cidade", f.cidade), campo("UF", f.uf), campo("Início das operações", f.inicio),
+      campo("Horários disponíveis por semana — manhã", f.capM, "ex.: 2 fisios × 5 horários × 5 dias = 50. Usado na taxa de ocupação ao importar da franquia."), campo("Horários disponíveis por semana — tarde", f.capT)),
       el("div", { class: "form-acoes" }, botao("Salvar unidade", async () => {
         try {
-          await Unidades.salvar({ ...(r.id ? { id: r.id } : {}), clinica_id: ctx.clinica_id, nome: f.nome.value.trim(), cidade: f.cidade.value.trim(), uf: f.uf.value.trim().toUpperCase(), inicio: f.inicio.value || null, ativa: r.ativa ?? true });
+          await Unidades.salvar({ ...(r.id ? { id: r.id } : {}), clinica_id: ctx.clinica_id, nome: f.nome.value.trim(), cidade: f.cidade.value.trim(), uf: f.uf.value.trim().toUpperCase(), inicio: f.inicio.value || null, ativa: r.ativa ?? true,
+            cap_manha_semana: f.capM.value === "" ? null : Number(f.capM.value), cap_tarde_semana: f.capT.value === "" ? null : Number(f.capT.value) });
           await ctx.recarregarUnidades(); ctx.unidades = (await Unidades.listar(ctx.clinica_id)); desenharUnidades(); uForm.replaceChildren(); toast("Unidade salva.", "ok");
         } catch (e) { erro(e); }
       }), botao("Cancelar", () => uForm.replaceChildren(), "btn sec")));

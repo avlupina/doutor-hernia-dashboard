@@ -4,14 +4,14 @@ export const SUPABASE_KEY = "sb_publishable_ano7AZJBmc6zg1HJct7b5g_NUiUbRuV";
 
 export const APP_NAME = "Doutor Hérnia Dashboard";
 // Incrementar a cada publicação: evita que o navegador use módulos antigos em cache.
-export const APP_VERSION = "2026.10.13-2";
+export const APP_VERSION = "2026.10.26-1";
 
 // Primeiro mês com lançamentos (limite inferior dos seletores de período)
 export const PERIODO_INICIO = "2025-07-01";
 
 // Listas padrão (as mesmas da planilha)
 export const LISTAS = {
-  canais: ["Instagram", "Google", "WhatsApp direto", "Indicação", "Facebook", "Site", "Convênio/Parceria", "Passante/Fachada", "Outro"],
+  canais: ["Instagram", "Facebook", "WhatsApp direto", "Google", "Site", "Indicação", "Passante/Fachada", "IA2GO", "Ligação telefônica", "Outdoor", "Convênio/Parceria", "Outro"],
   formasPagamento: ["Pix", "Dinheiro", "Cartão de débito", "Cartão de crédito", "Boleto", "Transferência", "Convênio"],
   condicoes: ["À vista", "Parcelado"],
   statusPagamento: ["Pago", "Pendente", "Atrasado", "Cancelado"],
