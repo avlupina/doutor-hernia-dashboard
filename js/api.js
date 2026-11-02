@@ -182,4 +182,50 @@ export const Clinica = {
   async assistenteConfig() { const rows = unwrap(await sb.rpc("assistente_config")); return rows?.[0] || null; },
 };
 
+// ------------------------------------------------------------------ Banco Inter
+const INTEG_COLS = "id,clinica_id,unidade_id,nome,conta_corrente,client_id,escopos,sync_desde,ativo,ultima_sync,ultimo_erro,saldo,saldo_em,updated_at";
+export const Inter = {
+  async integracao(unidade_id) { return unwrap(await sb.from("inter_integracoes").select(INTEG_COLS).eq("unidade_id", unidade_id).maybeSingle()); },
+  async integracoes(clinica_id) { return unwrap(await sb.from("inter_integracoes").select(INTEG_COLS).eq("clinica_id", clinica_id)); },
+  /** Campos sensíveis (client_secret, certificado, chave_privada) só são enviados se preenchidos; nunca são lidos de volta. */
+  async salvarIntegracao(row) { return unwrap(await sb.from("inter_integracoes").upsert({ ...row, updated_at: new Date().toISOString() }, { onConflict: "unidade_id" })); },
+  /** Chama a Edge Function inter-sync. acao: "testar" | "sincronizar"; extra: { de, ate } */
+  async sincronizar(unidade_id, acao = "sincronizar", extra = {}) {
+    const { data, error } = await sb.functions.invoke("inter-sync", { body: { unidade_id, acao, ...extra } });
+    if (error) {
+      let msg = error.message;
+      try { const j = await error.context?.json(); if (j?.erro) msg = j.erro; } catch {}
+      throw new Error(msg);
+    }
+    if (data?.erro) throw new Error(data.erro);
+    return data;
+  },
+  async extrato(u, { de, ate, tipo, filtro } = {}) {
+    let q = porUnidade(sb.from("inter_extrato").select("*").eq("clinica_id", u.clinica_id), u).order("data", { ascending: false }).order("created_at", { ascending: false }).limit(2000);
+    if (de) q = q.gte("data", de);
+    if (ate) q = q.lte("data", ate);
+    if (tipo) q = q.eq("tipo_operacao", tipo);
+    if (filtro === "sem_categoria") q = q.is("categoria", null);
+    if (filtro === "sem_parcela") q = q.eq("tipo_operacao", "C").is("conciliado_id", null);
+    return unwrap(await q);
+  },
+  async atualizarExtrato(id, patch) { return unwrap(await sb.from("inter_extrato").update(patch).eq("id", id)); },
+  async cobrancas(u, { de, ate } = {}) {
+    let q = porUnidade(sb.from("inter_cobrancas").select("*").eq("clinica_id", u.clinica_id), u).order("data_vencimento", { ascending: false }).limit(2000);
+    if (de) q = q.gte("data_vencimento", de);
+    if (ate) q = q.lte("data_vencimento", ate);
+    return unwrap(await q);
+  },
+  async saldos(u) { return unwrap(await porUnidade(sb.from("inter_saldos").select("*").eq("clinica_id", u.clinica_id), u).order("data")); },
+  async mensal(u) { return unwrap(await porUnidade(sb.from("v2_inter_mensal").select("*").eq("clinica_id", u.clinica_id), u).order("mes")); },
+  async regras(clinica_id) { return unwrap(await sb.from("inter_regras").select("*").eq("clinica_id", clinica_id).order("ordem").order("created_at")); },
+  async salvarRegra(row) { return unwrap(await sb.from("inter_regras").upsert(row).select().single()); },
+  async excluirRegra(id) { return unwrap(await sb.from("inter_regras").delete().eq("id", id)); },
+  async classificar(unidade_id) { return unwrap(await sb.rpc("inter_classificar", { p_unidade: unidade_id })); },
+  async gerarLancamentos(unidade_id) { return unwrap(await sb.rpc("inter_gerar_lancamentos", { p_unidade: unidade_id })); },
+  async conciliar(unidade_id, tolerancia = 5) { return unwrap(await sb.rpc("inter_conciliar", { p_unidade: unidade_id, p_tolerancia: tolerancia })); },
+  /** Parcelas (lançamentos rec:*) por id — para mostrar com que parcela um crédito foi conciliado. */
+  async parcelas(ids) { if (!ids.length) return {}; const rows = unwrap(await sb.from("lancamentos").select("id,data,vencimento,valor,contraparte,descricao,status").in("id", ids)); return Object.fromEntries(rows.map(r => [r.id, r])); },
+};
+
 export { chave };

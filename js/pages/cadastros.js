@@ -1,7 +1,68 @@
 // Cadastros — clínica, unidades, fisioterapeutas e configuração do assistente de IA.
-import { Fisios, Unidades, Clinica } from "../api.js";
+import { Fisios, Unidades, Clinica, Inter } from "../api.js";
 import { getPerfil } from "../supabase.js";
-import { el, secao, input, campo, botao, toast, erro, tabela, fmt } from "../ui.js";
+import { el, secao, input, campo, botao, toast, erro, tabela, fmt, textarea } from "../ui.js";
+
+async function secaoInter(ctx) {
+  const atual = await Inter.integracao(ctx.unidade_id);
+  const status = el("div");
+  const desenharStatus = (i) => status.replaceChildren(!i ? el("p", { class: "nota" }, "Nenhuma integração cadastrada para esta unidade.")
+    : el("div", { class: "grid grid-kpi" },
+      el("div", { class: "kpi" }, el("div", { class: "kpi-titulo" }, "Saldo disponível"), el("div", { class: "kpi-valor" }, fmt.brl(i.saldo)), el("div", { class: "kpi-linhas" }, el("span", { class: "kpi-sub" }, i.saldo_em ? "em " + fmt.data(i.saldo_em) : "ainda não consultado"))),
+      el("div", { class: "kpi" }, el("div", { class: "kpi-titulo" }, "Última sincronização"), el("div", { class: "kpi-valor", style: "font-size:18px" }, i.ultima_sync ? new Date(i.ultima_sync).toLocaleString("pt-BR") : "nunca"), el("div", { class: "kpi-linhas" }, el("span", { class: "kpi-sub" }, "Client ID " + (i.client_id ? "…" + i.client_id.slice(-6) : "—")))),
+      el("div", { class: "kpi" }, el("div", { class: "kpi-titulo" }, "Situação"), el("div", { class: "kpi-valor", style: "font-size:18px" }, i.ultimo_erro ? "erro" : i.ativo ? "ativa" : "inativa"), i.ultimo_erro ? el("div", { class: "kpi-linhas" }, el("span", { class: "kpi-sub", style: "color:var(--ruim)" }, i.ultimo_erro)) : null)));
+  desenharStatus(atual);
+
+  const f = {
+    clientId: input({ value: atual?.client_id || "", autocomplete: "off", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }),
+    secret: input({ type: "password", autocomplete: "new-password", placeholder: atual ? "(mantido — preencha só para trocar)" : "" }),
+    cert: textarea({ rows: 3, placeholder: atual ? "(mantido — cole ou envie o arquivo só para trocar)" : "-----BEGIN CERTIFICATE----- …" }),
+    key: textarea({ rows: 3, placeholder: atual ? "(mantida — cole ou envie o arquivo só para trocar)" : "-----BEGIN PRIVATE KEY----- …" }),
+    conta: input({ value: atual?.conta_corrente || "", placeholder: "só se o CNPJ tiver mais de uma conta" }),
+    desde: input({ type: "date", value: atual?.sync_desde || "2025-07-01" }),
+    cobranca: el("input", { type: "checkbox" }),
+  };
+  f.cobranca.checked = atual ? /boleto-cobranca/.test(atual.escopos) : true;
+  const arquivo = (alvo, accept) => { const i = el("input", { type: "file", accept, class: "input" }); i.onchange = async () => { const a = i.files?.[0]; if (a) alvo.value = await a.text(); }; return i; };
+
+  const sincronizar = async (acao) => {
+    if (!atual && !f.clientId.value) return toast("Cadastre as credenciais primeiro.", "erro");
+    const b = acao === "testar" ? btnTestar : btnSync; b.disabled = true; b.textContent = acao === "testar" ? "Testando…" : "Sincronizando…";
+    try {
+      const r = await Inter.sincronizar(ctx.unidade_id, acao);
+      toast(acao === "testar" ? `Conexão OK. Saldo disponível: ${fmt.brl(r.saldo)}` : `Sincronizado: ${r.extrato} itens de extrato, ${r.cobrancas} cobranças, ${r.conciliados} créditos conciliados.`, "ok");
+      desenharStatus(await Inter.integracao(ctx.unidade_id));
+    } catch (e) { erro(e); desenharStatus(await Inter.integracao(ctx.unidade_id)); }
+    finally { b.disabled = false; b.textContent = acao === "testar" ? "Testar conexão" : "Sincronizar agora"; }
+  };
+  const btnTestar = botao("Testar conexão", () => sincronizar("testar"), "btn sec"), btnSync = botao("Sincronizar agora", () => sincronizar("sincronizar"), "btn sec");
+
+  return secao(`Banco Inter — ${ctx.unidade.nome}`,
+    el("p", { class: "nota" }, "No Inter Empresas: Integrar → Nova Integração → marque API Banking (extrato e saldo) e API Cobrança → baixe Client ID, Client Secret, certificado (.crt) e chave (.key). ",
+      "Eles só podem ser baixados uma vez. O segredo, o certificado e a chave ficam guardados no servidor e não são exibidos de volta aqui."),
+    status,
+    el("div", { class: "form-grid" },
+      campo("Client ID", f.clientId), campo("Client Secret", f.secret),
+      campo("Conta corrente (opcional)", f.conta), campo("Sincronizar extrato desde", f.desde, "Primeiro dia a buscar no extrato (histórico)."),
+      el("label", { class: "campo" }, el("span", { class: "campo-label" }, "Escopos"), el("label", { class: "nota" }, f.cobranca, " incluir API Cobrança (boletos e Pix cobrança emitidos pelo Inter)"))),
+    el("div", { class: "form-grid", style: "margin-top:12px" },
+      el("div", {}, campo("Certificado (Inter_API_Certificado.crt)", f.cert), arquivo(f.cert, ".crt,.pem,.cer,.txt")),
+      el("div", {}, campo("Chave privada (Inter_API_Chave.key)", f.key), arquivo(f.key, ".key,.pem,.txt"))),
+    el("div", { class: "form-acoes" }, botao("Salvar credenciais", async () => {
+      try {
+        const row = { clinica_id: ctx.clinica_id, unidade_id: ctx.unidade_id, nome: "Banco Inter", client_id: f.clientId.value.trim() || null, conta_corrente: f.conta.value.trim() || null,
+          sync_desde: f.desde.value || "2025-07-01", escopos: f.cobranca.checked ? "extrato.read boleto-cobranca.read" : "extrato.read", ativo: true };
+        if (f.secret.value.trim()) row.client_secret = f.secret.value.trim();
+        if (f.cert.value.trim()) row.certificado = f.cert.value.trim();
+        if (f.key.value.trim()) row.chave_privada = f.key.value.trim();
+        if (!atual && !(row.client_secret && row.certificado && row.chave_privada)) return toast("Informe Client Secret, certificado e chave.", "erro");
+        await Inter.salvarIntegracao(row);
+        f.secret.value = f.cert.value = f.key.value = "";
+        toast("Credenciais salvas. Use “Testar conexão”.", "ok");
+        desenharStatus(await Inter.integracao(ctx.unidade_id));
+      } catch (e) { erro(e); }
+    }), btnTestar, btnSync, el("a", { href: "#/banco", class: "btn sec" }, "Abrir Conciliação Bancária")));
+}
 
 export async function render(root, ctx) {
   if (!ctx.editor) { root.append(secao("Acesso", el("p", {}, "Apenas administradores e gestores alteram cadastros."))); return; }
@@ -65,6 +126,12 @@ export async function render(root, ctx) {
         try { const r = await Clinica.zerarUnidade(ctx.unidade_id); confirmar.value = ""; toast("Dados apagados: " + Object.entries(r || {}).map(([k, v]) => `${k} ${v}`).join(", "), "ok"); }
         catch (e) { erro(e.message?.includes("zerar_unidade") ? new Error("Função zerar_unidade não encontrada no banco. Aplique supabase/migrations/0005_zerar_unidade.sql no SQL Editor.") : e); }
       }, "btn perigo"))));
+  }
+
+  // ---- Banco Inter (admin, por unidade)
+  if (ctx.admin) {
+    if (!ctx.unidade_id) root.append(secao("Banco Inter", el("p", { class: "nota" }, "Selecione uma unidade no menu lateral para configurar a conta do Banco Inter dela.")));
+    else root.append(await secaoInter(ctx));
   }
 
   // ---- assistente de IA (admin)

@@ -10,6 +10,7 @@ const ROTAS = {
   fisios: () => import("./pages/fisios.js"),
   financeiro: () => import("./pages/financeiro.js"),
   projecoes: () => import("./pages/projecoes.js"),
+  banco: () => import("./pages/banco.js"),
   marketing: () => import("./pages/marketing.js"),
   metas: () => import("./pages/metas.js"),
   semana: () => import("./pages/semana.js"),

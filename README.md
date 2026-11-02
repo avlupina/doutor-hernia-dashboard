@@ -25,7 +25,8 @@ js/api.js                  camada de dados (tabelas e views)
 js/ui.js                   componentes: KPIs, tabelas, gráficos, formulários, toasts
 js/importer.js             leitura da planilha padronizada e gravação
 js/pages/*.js              uma tela por arquivo
-supabase/migrations/       0001 schema + RLS, 0002 views (legado), 0003 unidades + config, 0004 views v2 por unidade
+supabase/migrations/       0001 schema + RLS … 0006 franquia, 0007 Banco Inter, 0008 zerar (SQL Editor)
+supabase/functions/inter-sync/   Edge Function: sincroniza saldo, extrato e cobranças do Banco Inter (mTLS)
 tools/build_planilha_modelo.py   gera Base_Dados_Clinica.xlsx (modelo da planilha)
 tools/test_import.mjs      teste do importador fora do navegador
 Base_Dados_Clinica.xlsx    modelo da planilha de coleta (com dados de exemplo)
@@ -41,10 +42,11 @@ Base_Dados_Clinica.xlsx    modelo da planilha de coleta (com dados de exemplo)
 | `#/marketing` | todos | Funil, custo por lead / MQL / SQL, CAC, leads por canal |
 | `#/financeiro` | todos (edição: admin/gestor) | Margem de contribuição, ponto de equilíbrio, lançamentos (classificação fixo/variável) |
 | `#/projecoes` | todos | Simulador de cenários (pessimista/base/otimista) |
+| `#/banco` | todos (ações: admin/gestor) | Conciliação Bancária: extrato do Inter classificado, cobranças, regras, banco × franquia |
 | `#/semana` | admin, gestor | Lançamento manual de uma semana (base, fisios, leads por canal, contratos, reunião, ações) |
 | `#/importar` | admin, gestor | Importação da planilha padronizada |
 | `#/metas` | admin, gestor | Metas semanais e mensais por unidade |
-| `#/cadastros` | admin, gestor | Clínica, unidades, fisioterapeutas (slots 1 e 2 = Fisio 1 e 2 da planilha), chave do Gemini (admin) |
+| `#/cadastros` | admin, gestor | Clínica, unidades, fisioterapeutas (slots 1 e 2 = Fisio 1 e 2 da planilha), credenciais do Banco Inter e chave do Gemini (admin) |
 | `#/assistente` | todos | Assistente de IA (Gemini) com os dados da unidade como contexto |
 | `#/usuarios` | todos (gestão: admin) | Troca da própria senha; admin: usuários, papéis, ativação e convites |
 
@@ -113,3 +115,24 @@ Usa a API do Gemini direto do navegador. O admin cadastra a chave em Cadastros; 
 ## Importação dos relatórios da franqueadora
 
 Em **Importar → Relatórios da franquia**, envie os .xls exportados do sistema da franqueadora (são tabelas HTML): Agendamentos, Tratamentos e Contas a receber. O tipo é detectado pelo cabeçalho. Regras em `js/importer_franquia.js` (avaliação = 1º agendamento do paciente; receita por parcela; valor do protocolo = soma das parcelas; parcelas pendentes com descrição de erro/duplicidade/cancelamento viram "Cancelado"). Registros recebem `ref_externa` (`agend:ID`, `trat:ID`, `rec:Código`) e são atualizados em reimportações. A capacidade semanal de horários da unidade (Cadastros) alimenta a taxa de ocupação.
+
+## Integração com o Banco Inter Empresas
+
+A API do Inter exige certificado de cliente (mTLS), então a sincronização roda na Edge Function `inter-sync`
+(`supabase functions deploy inter-sync` ou via MCP). Fluxo:
+
+1. No Inter Empresas: **Integrar → Nova Integração**, escopos *API Banking* (extrato e saldo) e *API Cobrança*;
+   baixar Client ID, Client Secret, `Inter_API_Certificado.crt` e `Inter_API_Chave.key` (download único).
+2. No app, **Cadastros → Banco Inter** (admin, com a unidade selecionada): colar/enviar os quatro dados e **Testar conexão**.
+   `client_secret`, `certificado` e `chave_privada` ficam em `inter_integracoes` sem privilégio de SELECT para o front-end
+   (só a função, com a chave secreta do projeto, os lê); o app nunca os exibe de volta.
+3. **Sincronizar agora** (ou automaticamente ao abrir Conciliação Bancária após 12 h): token OAuth2 `client_credentials`
+   → `GET /banking/v2/saldo` → `GET /banking/v2/extrato/completo` em janelas de 90 dias desde `sync_desde` (depois, do último
+   item −7 dias) → `GET /cobranca/v3/cobrancas` (vencimento) → grava em `inter_saldos`, `inter_extrato`, `inter_cobrancas`.
+4. Em seguida, com o JWT do usuário: `inter_classificar` (regras de `inter_regras` + impostos conhecidos; créditos = Receita),
+   `inter_gerar_lancamentos` (saídas Gasto/Imposto/Marketing viram `lancamentos` com `ref_externa = inter:<idTransacao>`,
+   status Pago; se o item deixar de ser gasto, o lançamento fica Cancelado) e `inter_conciliar` (crédito ↔ parcela `rec:*`
+   de mesmo valor até 5 dias de distância; a parcela vira Paga).
+
+Receita continua vindo do contas a receber da franquia (por paciente); o banco entra como gastos reais e como conferência
+(**Banco × Franquia**). `v2_inter_mensal` resume entradas/saídas por mês.
