@@ -228,4 +228,50 @@ export const Inter = {
   async parcelas(ids) { if (!ids.length) return {}; const rows = unwrap(await sb.from("lancamentos").select("id,data,vencimento,valor,contraparte,descricao,status").in("id", ids)); return Object.fromEntries(rows.map(r => [r.id, r])); },
 };
 
+// ------------------------------------------------------------------ IA2GO (agente de IA de WhatsApp da franquia) — coleta manual
+export const IA2GO = {
+  async semanal(u, { de, ate } = {}) {
+    let q = porUnidade(sb.from("v2_ia2go_semanal").select("*").eq("clinica_id", u.clinica_id), u).order("inicio");
+    if (de) q = q.gte("inicio", de);
+    if (ate) q = q.lte("inicio", ate);
+    return unwrap(await q);
+  },
+  /** Salva só os campos IA2GO da semana (upsert parcial — não mexe nos demais campos da base). */
+  async salvarSemana(u, id_semana, campos) {
+    return unwrap(await sb.from("base_semanal").upsert({ ...chave(u), id_semana, ...campos, updated_at: new Date().toISOString() }, { onConflict: "clinica_id,unidade_id,id_semana" }));
+  },
+  /**
+   * Leads por origem informados por mês (gráfico "Leads por Origem" do dashboard do IA2GO):
+   * distribui pelas semanas ISO que tocam o mês, proporcionalmente aos dias de cada semana dentro do mês,
+   * e grava em leads_canal (observacoes = 'IA2GO mês AAAA-MM').
+   */
+  async salvarLeadsOrigemMes(u, mes, porCanal, semanas) {
+    const [y, m] = mes.split("-").map(Number);
+    const ini = new Date(Date.UTC(y, m - 1, 1)), fim = new Date(Date.UTC(y, m, 0));
+    const toca = semanas.map(s => {
+      const a = new Date(s.inicio + "T00:00:00Z"), b = new Date(s.fim + "T00:00:00Z");
+      const d0 = a > ini ? a : ini, d1 = b < fim ? b : fim;
+      const dias = Math.round((d1 - d0) / 864e5) + 1;
+      return dias > 0 ? { id_semana: s.id_semana, dias } : null;
+    }).filter(Boolean);
+    const totalDias = toca.reduce((a, s) => a + s.dias, 0);
+    const rows = [];
+    for (const [canal, qtd] of Object.entries(porCanal)) {
+      // maior resto: soma das semanas bate exatamente com o total do mês
+      const brutos = toca.map(s => ({ s, v: qtd * s.dias / totalDias }));
+      let dist = brutos.map(x => Math.floor(x.v)); let resto = qtd - dist.reduce((a, b) => a + b, 0);
+      brutos.map((x, i) => [x.v - Math.floor(x.v), i]).sort((a, b) => b[0] - a[0]).slice(0, resto).forEach(([, i]) => dist[i]++);
+      toca.forEach((s, i) => rows.push(chave(u, { id_semana: s.id_semana, canal, quantidade: dist[i], observacoes: "IA2GO mês " + mes })));
+    }
+    if (rows.length) unwrap(await sb.from("leads_canal").upsert(rows, { onConflict: "clinica_id,unidade_id,id_semana,canal" }));
+    unwrap(await sb.from("ia2go_leads_origem_mes").upsert(Object.entries(porCanal).map(([canal, quantidade]) => chave(u, { mes, canal, quantidade, updated_at: new Date().toISOString() })), { onConflict: "unidade_id,mes,canal" }));
+    return rows.length;
+  },
+  async leadsOrigemMes(u, mes) {
+    const rows = unwrap(await porUnidade(sb.from("ia2go_leads_origem_mes").select("canal,quantidade").eq("clinica_id", u.clinica_id), u).eq("mes", mes));
+    const out = {}; for (const r of rows) out[r.canal] = (out[r.canal] || 0) + r.quantidade; return out;
+  },
+  async leadsOrigemMeses(u) { return unwrap(await porUnidade(sb.from("ia2go_leads_origem_mes").select("*").eq("clinica_id", u.clinica_id), u).order("mes")); },
+};
+
 export { chave };

@@ -25,7 +25,7 @@ js/api.js                  camada de dados (tabelas e views)
 js/ui.js                   componentes: KPIs, tabelas, gráficos, formulários, toasts
 js/importer.js             leitura da planilha padronizada e gravação
 js/pages/*.js              uma tela por arquivo
-supabase/migrations/       0001 schema + RLS … 0006 franquia, 0007 Banco Inter, 0008 zerar (SQL Editor)
+supabase/migrations/       0001 schema + RLS … 0006 franquia, 0007 Banco Inter, 0008 zerar (SQL Editor), 0009 IA2GO
 supabase/functions/inter-sync/   Edge Function: sincroniza saldo, extrato e cobranças do Banco Inter (mTLS)
 tools/build_planilha_modelo.py   gera Base_Dados_Clinica.xlsx (modelo da planilha)
 tools/test_import.mjs      teste do importador fora do navegador
@@ -136,3 +136,12 @@ A API do Inter exige certificado de cliente (mTLS), então a sincronização rod
 
 Receita continua vindo do contas a receber da franquia (por paciente); o banco entra como gastos reais e como conferência
 (**Banco × Franquia**). `v2_inter_mensal` resume entradas/saídas por mês.
+
+## IA2GO (agente de IA de WhatsApp da franquia)
+
+A plataforma (plataforma.ia2go.com.br) não oferece API nem exportação, então a coleta é manual e rápida:
+- **Lançar Semana → IA2GO — conversas da semana**: na tela *Conversas* (visão em lista) filtre "Início da conversa" na semana e copie
+  o cabeçalho: total de conversas (= leads), quentes, mornas, frias, não classificadas, novas avaliações criadas pela IA e o último
+  código (#IA-xxx-NNNNN). Colunas `ia_*` em `base_semanal`; a view `v2_ia2go_semanal` calcula taxas e confere o total pela diferença de códigos.
+- **Marketing → IA2GO — leads por origem do mês**: os 4 números do gráfico "Leads por Origem" do dashboard; gravados em
+  `ia2go_leads_origem_mes` e distribuídos pelas semanas do mês em `leads_canal` (proporcional aos dias, maior resto).

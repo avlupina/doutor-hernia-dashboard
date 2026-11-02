@@ -1,5 +1,5 @@
 // Lançar semana — entrada manual dos dados de uma semana (alternativa à planilha).
-import { Semanas, BaseSemanal, Fisios, LeadsCanal, Reunioes, Acoes, Contratos } from "../api.js";
+import { Semanas, BaseSemanal, Fisios, LeadsCanal, Reunioes, Acoes, Contratos, IA2GO } from "../api.js";
 import { el, fmt, secao, tabela, input, select, textarea, campo, botao, toast, erro, hoje } from "../ui.js";
 import { LISTAS } from "../config.js";
 
@@ -53,6 +53,31 @@ export async function render(root, ctx) {
           const rowsF = FF.map(x => ({ clinica_id: ctx.clinica_id, unidade_id: ctx.unidade_id, id_semana: id, fisioterapeuta_id: x.f.id, aval_realizadas: Number(x.aval.value || 0), contratos: Number(x.contratos.value || 0),
             atendimentos: Number(x.atend.value || 0), tempo_medio_min: x.tempo.value === "" ? null : Number(x.tempo.value), desvio_min: x.desvio.value === "" ? null : Number(x.desvio.value) }));
           await BaseSemanal.salvar(row, rowsF); toast("Dados da base salvos.", "ok");
+        } catch (e) { erro(e); }
+      }))));
+
+    // --- IA2GO (tela Conversas, filtro "Início da conversa" na semana)
+    const ant = await IA2GO.semanal(ctx.u, { ate: sem?.inicio }).then(r => r.filter(x => x.id_semana !== id && x.ia_ultimo_codigo != null).pop()).catch(() => null);
+    const IA = { leads: num("a", b.leads), quentes: num("a", b.ia_quentes), mornas: num("a", b.ia_mornas), frias: num("a", b.ia_frias), nao: num("a", b.ia_nao_classificadas), aval: num("a", b.ia_avaliacoes), cod: num("a", b.ia_ultimo_codigo) };
+    const confere = el("span", { class: "nota" });
+    const atualizaConfere = () => {
+      const q = Number(IA.quentes.value || 0) + Number(IA.mornas.value || 0) + Number(IA.frias.value || 0) + Number(IA.nao.value || 0), t = Number(IA.leads.value || 0);
+      const partes = [`Quentes + mornas + frias + não classificadas = ${q}${t && q !== t ? ` (≠ ${t} conversas)` : ""}`];
+      if (ant && IA.cod.value) { const d = Number(IA.cod.value) - ant.ia_ultimo_codigo; partes.push(`pelo código: ${d} novas conversas desde ${ant.id_semana} (#…${ant.ia_ultimo_codigo})${t && d !== t ? " — confira" : " ✓"}`); }
+      confere.textContent = partes.join(" · ");
+    };
+    Object.values(IA).forEach(i => i.oninput = atualizaConfere); atualizaConfere();
+    IA.leads.oninput = () => { F.leads.value = IA.leads.value; atualizaConfere(); }; F.leads.addEventListener("input", () => { IA.leads.value = F.leads.value; atualizaConfere(); });
+    corpo.append(secao("IA2GO — conversas da semana",
+      el("p", { class: "nota" }, "No IA2GO: Conversas → visão em lista → filtre “Início da conversa” de ", fmt.data(sem?.inicio), " a ", fmt.data(sem?.fim), " e copie os números do cabeçalho. O total de conversas é o total de leads da semana."),
+      el("div", { class: "form-grid" }, campo("Total de conversas (leads)", IA.leads), campo("Leads quentes", IA.quentes), campo("Leads mornas", IA.mornas), campo("Leads frias", IA.frias), campo("Não classificadas", IA.nao),
+        campo("Novas avaliações criadas pela IA", IA.aval), campo("Último código da semana (#IA-…-NNNNN)", IA.cod, "só o número, ex.: 1650")),
+      confere,
+      el("div", { class: "form-acoes" }, botao("Salvar IA2GO", async () => {
+        try {
+          const n = v => (v === "" ? null : Number(v));
+          await IA2GO.salvarSemana(ctx.u, id, { leads: Number(IA.leads.value || 0), ia_quentes: n(IA.quentes.value), ia_mornas: n(IA.mornas.value), ia_frias: n(IA.frias.value), ia_nao_classificadas: n(IA.nao.value), ia_avaliacoes: n(IA.aval.value), ia_ultimo_codigo: n(IA.cod.value) });
+          toast("Dados do IA2GO salvos.", "ok");
         } catch (e) { erro(e); }
       }))));
 

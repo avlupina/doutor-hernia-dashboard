@@ -1,7 +1,7 @@
 // Marketing & Vendas — duas abas: Marketing (aquisição, canais, CPL/MQL/SQL/CAC) e Vendas (funil, eficiência, metas, ROI).
 // Definições: MQL = avaliação agendada; SQL = avaliação realizada; venda = tratamento contratado; CAC = marketing ÷ novos pacientes.
-import { Resumo, Metas, mesesDisponiveis } from "../api.js";
-import { el, kpi, fmt, secao, tabela, grafico, PALETA, seletorPeriodo, evolucao } from "../ui.js";
+import { Resumo, Metas, mesesDisponiveis, IA2GO, Semanas } from "../api.js";
+import { el, kpi, fmt, secao, tabela, grafico, PALETA, seletorPeriodo, evolucao, input, select, campo, botao, toast, erro } from "../ui.js";
 import { agregarMeses } from "./mensal.js";
 import { agregarPorSemana } from "./painel.js";
 
@@ -58,6 +58,29 @@ export async function render(root, ctx) {
     else gCanalEvo.append(el("p", { class: "nota" }, "Sem dados."));
     corpo.append(el("div", { class: "grid grid-2" }, gCanal, gCanalEvo));
 
+    // ---- IA2GO: qualificação das conversas (quente / morna / fria) e leads por origem informados por mês
+    const ia = sem.length ? await IA2GO.semanal(ctx.u, { de: sem[0].inicio, ate: sem[sem.length - 1].inicio }) : [];
+    const iaSoma = k => ia.reduce((a, r) => a + Number(r[k] || 0), 0);
+    const I = { leads: iaSoma("leads"), q: iaSoma("ia_quentes"), m: iaSoma("ia_mornas"), f: iaSoma("ia_frias"), n: iaSoma("ia_nao_classificadas"), aval: iaSoma("ia_avaliacoes"), semanas: ia.filter(r => r.ia_quentes != null || r.ia_frias != null).length };
+    const secIA = secao("IA2GO — qualificação das conversas no período");
+    if (!I.semanas) secIA.append(el("p", { class: "nota" }, "Sem dados do IA2GO nas semanas do período. Lance em “Lançar Semana → IA2GO — conversas da semana”."));
+    else {
+      const et = [["Conversas (leads)", I.leads], ["Quentes", I.q], ["Mornas", I.m], ["Frias", I.f], ["Não classificadas", I.n], ["Avaliações criadas pela IA", I.aval], ["Avaliações agendadas (MQL)", T.mql]];
+      secIA.append(el("div", { class: "grid grid-kpi" },
+        kpi({ titulo: "Conversas iniciadas", valor: I.leads, formato: fmt.int, sub: `${I.semanas} semana(s) com dados` }),
+        kpi({ titulo: "Leads quentes", valor: I.q, formato: fmt.int, sub: fmt.pct(div(I.q, I.leads)) + " das conversas" }),
+        kpi({ titulo: "Qualificados (quentes + mornas)", valor: I.q + I.m, formato: fmt.int, sub: fmt.pct(div(I.q + I.m, I.leads)) + " das conversas" }),
+        kpi({ titulo: "Não classificadas", valor: I.n, formato: fmt.int, sub: fmt.pct(div(I.n, I.leads)) + " das conversas", inverter: true }),
+        kpi({ titulo: "Avaliações criadas pela IA", valor: I.aval, formato: fmt.int, sub: fmt.pct(div(I.aval, I.leads)) + " das conversas" }),
+        kpi({ titulo: "Custo por lead quente", valor: div(T.mkt, I.q), formato: fmt.brl })));
+      grafico(secIA, { tipo: "bar", labels: et.map(e => e[0]), datasets: [{ label: "Quantidade", data: et.map(e => e[1]) }] }, 220);
+      if (div(I.n, I.leads) > 0.3) secIA.append(el("p", { class: "nota" }, `⚠ ${fmt.pct(div(I.n, I.leads))} das conversas ficaram sem classificação — a IA está deixando leads sem triagem; vale revisar a cadência de follow-up no IA2GO.`));
+      evolucao(secIA, { titulo: "Evolução — qualificação semanal", rowsSem: ia.map(r => ({ ...r, mes: r.mes })), rowsMes: agregarIAMes(ia), tipo: "bar", altura: 220,
+        series: [{ label: "Quentes", k: "ia_quentes", cor: "#b30e0a" }, { label: "Mornas", k: "ia_mornas", cor: "#eda100" }, { label: "Frias", k: "ia_frias", cor: "#2a78d6" }, { label: "Não classificadas", k: "ia_nao_classificadas", cor: "#8a8984" }] });
+    }
+    corpo.append(secIA);
+    if (ctx.editor && ctx.unidade_id) corpo.append(await formLeadsOrigem());
+
     evolucao(corpo, { titulo: "Evolução — investimento e leads", rowsSem: sem, rowsMes: meses, tipo: "bar", series: [{ label: "Marketing (R$)", k: "marketing" }], formatoY: fmt.brl, altura: 220 });
     evolucao(corpo, { titulo: "Evolução — custo por lead, MQL, SQL e CAC", rowsSem: sem, rowsMes: meses, formatoY: fmt.brl,
       series: [{ label: "Custo por lead", k: "custo_por_lead" }, { label: "Custo por MQL", k: "custo_por_mql" }, { label: "Custo por SQL", k: "custo_por_sql" }, { label: "CAC", k: "cac" }] });
@@ -69,6 +92,36 @@ export async function render(root, ctx) {
       { k: "contratos", t: "Vendas", cls: "num", f: fmt.int }, { k: "novos_pacientes", t: "Novos pac.", cls: "num", f: fmt.int }, { k: "custo_por_lead", t: "CPL", cls: "num", f: fmt.brl },
       { k: "custo_por_mql", t: "C/MQL", cls: "num", f: fmt.brl }, { k: "custo_por_sql", t: "C/SQL", cls: "num", f: fmt.brl }, { k: "cac", t: "CAC", cls: "num", f: fmt.brl },
     ], [...sem].reverse()))));
+  }
+
+  function agregarIAMes(rows) {
+    const m = {};
+    for (const r of rows) { const x = m[r.mes] ||= { mes: r.mes, ia_quentes: 0, ia_mornas: 0, ia_frias: 0, ia_nao_classificadas: 0 }; for (const k of ["ia_quentes", "ia_mornas", "ia_frias", "ia_nao_classificadas"]) x[k] += Number(r[k] || 0); }
+    return Object.values(m).sort((a, b) => a.mes.localeCompare(b.mes));
+  }
+
+  /** Formulário: leads por origem do mês (dashboard do IA2GO → "Leads por Origem"), distribuídos pelas semanas. */
+  async function formLeadsOrigem() {
+    const meses = mesesDisponiveis();
+    const mesSel = select(meses.map(m => [m, fmt.mes(m)]), { style: "width:auto" }, meses[meses.length - 1]);
+    const ORIGENS = [["Instagram", "Instagram"], ["Facebook", "Facebook"], ["WhatsApp direto", "WhatsApp"], ["Outro", "Outros"]];
+    const inputs = Object.fromEntries(ORIGENS.map(([c]) => [c, input({ type: "number", min: 0 })]));
+    const total = el("span", { class: "nota" });
+    const atualiza = () => total.textContent = "Total: " + ORIGENS.reduce((a, [c]) => a + Number(inputs[c].value || 0), 0);
+    Object.values(inputs).forEach(i => i.oninput = atualiza);
+    const carregar = async () => { const atual = await IA2GO.leadsOrigemMes(ctx.u, mesSel.value); for (const [c] of ORIGENS) inputs[c].value = atual[c] ?? ""; atualiza(); };
+    mesSel.onchange = carregar; await carregar();
+    return secao("IA2GO — leads por origem do mês",
+      el("p", { class: "nota" }, "Dashboard do IA2GO → gráfico “Leads por Origem” (filtre o mês). O app distribui pelas semanas do mês e usa nos leads por canal."),
+      el("div", { class: "form-grid" }, campo("Mês", mesSel), ...ORIGENS.map(([c, t]) => campo(t, inputs[c]))), total,
+      el("div", { class: "form-acoes" }, botao("Salvar leads por origem", async () => {
+        try {
+          const semanas = await Semanas.listar("2025-06-23");
+          const porCanal = Object.fromEntries(ORIGENS.map(([c]) => [c, Number(inputs[c].value || 0)]));
+          await IA2GO.salvarLeadsOrigemMes(ctx.u, mesSel.value, porCanal, semanas);
+          toast("Leads por origem salvos e distribuídos pelas semanas do mês.", "ok");
+        } catch (e) { erro(e); }
+      })));
   }
 
   // ------------------------------------------------------------------ Vendas
