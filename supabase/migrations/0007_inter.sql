@@ -213,3 +213,25 @@ select e.clinica_id, e.unidade_id, e.mes,
        count(*) filter (where tipo_operacao = 'C' and conciliado_id is not null) as creditos_conciliados,
        count(*) filter (where tipo_operacao = 'C' and conciliado_id is null and coalesce(categoria,'Receita') = 'Receita') as creditos_sem_parcela
 from public.inter_extrato e group by 1,2,3;
+
+-- ------------------------------------------------------------ gravação das credenciais (admin), sem exigir SELECT nas colunas sensíveis
+create or replace function public.inter_salvar_integracao(p jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare v_cid uuid := public.current_clinica_id(); v_un uuid := (p->>'unidade_id')::uuid; v_id uuid;
+begin
+  if public.current_papel() is distinct from 'admin' then raise exception 'Apenas administradores alteram a integração bancária.'; end if;
+  if not exists (select 1 from public.unidades where id = v_un and clinica_id = v_cid) then raise exception 'Unidade inválida.'; end if;
+  insert into public.inter_integracoes (clinica_id, unidade_id, nome, conta_corrente, client_id, client_secret, certificado, chave_privada, escopos, sync_desde, ativo)
+  values (v_cid, v_un, coalesce(p->>'nome','Banco Inter'), nullif(p->>'conta_corrente',''), nullif(p->>'client_id',''), nullif(p->>'client_secret',''), nullif(p->>'certificado',''), nullif(p->>'chave_privada',''),
+          coalesce(nullif(p->>'escopos',''), 'extrato.read boleto-cobranca.read'), coalesce((p->>'sync_desde')::date, '2025-07-01'), coalesce((p->>'ativo')::boolean, true))
+  on conflict (unidade_id) do update set
+    nome = excluded.nome, conta_corrente = excluded.conta_corrente,
+    client_id = coalesce(excluded.client_id, inter_integracoes.client_id),
+    client_secret = coalesce(excluded.client_secret, inter_integracoes.client_secret),
+    certificado = coalesce(excluded.certificado, inter_integracoes.certificado),
+    chave_privada = coalesce(excluded.chave_privada, inter_integracoes.chave_privada),
+    escopos = excluded.escopos, sync_desde = excluded.sync_desde, ativo = excluded.ativo, ultimo_erro = null, updated_at = now()
+  returning id into v_id;
+  return v_id;
+end $$;
+revoke execute on function public.inter_salvar_integracao(jsonb) from anon, public;

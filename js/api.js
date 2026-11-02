@@ -188,7 +188,7 @@ export const Inter = {
   async integracao(unidade_id) { return unwrap(await sb.from("inter_integracoes").select(INTEG_COLS).eq("unidade_id", unidade_id).maybeSingle()); },
   async integracoes(clinica_id) { return unwrap(await sb.from("inter_integracoes").select(INTEG_COLS).eq("clinica_id", clinica_id)); },
   /** Campos sensíveis (client_secret, certificado, chave_privada) só são enviados se preenchidos; nunca são lidos de volta. */
-  async salvarIntegracao(row) { return unwrap(await sb.from("inter_integracoes").upsert({ ...row, updated_at: new Date().toISOString() }, { onConflict: "unidade_id" })); },
+  async salvarIntegracao(row) { return unwrap(await sb.rpc("inter_salvar_integracao", { p: row })); },
   /** Chama a Edge Function inter-sync. acao: "testar" | "sincronizar"; extra: { de, ate } */
   async sincronizar(unidade_id, acao = "sincronizar", extra = {}) {
     const { data, error } = await sb.functions.invoke("inter-sync", { body: { unidade_id, acao, ...extra } });
