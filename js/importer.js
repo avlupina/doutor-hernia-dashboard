@@ -7,11 +7,23 @@ import { METAS_PADRAO } from "./config.js";
 
 const HEADER_ROW = 2; // linha 3 da planilha (índice 0)
 
-function lerAba(wb, nome) {
+// Cabeçalhos do modelo, na ordem das colunas: se uma célula de cabeçalho foi apagada na planilha, o nome é recuperado pela posição.
+const CABECALHOS = {
+  Base_Semanal: ["id_semana", "Início", "Fim", "Mês", "Leads recebidos", "Aval. agendadas", "Aval. canceladas", "Aval. realizadas Fisio 1", "Aval. realizadas Fisio 2", "Contratos fechados Fisio 1", "Contratos fechados Fisio 2",
+    "Atendimentos Fisio 1", "Atendimentos Fisio 2", "Cancelamentos de atendimentos", "Novos pacientes", "Horários disponíveis manhã", "Horários ocupados manhã", "Horários disponíveis tarde", "Horários ocupados tarde",
+    "Tempo médio atend. Fisio 1 (min)", "Desvio padrão Fisio 1 (min)", "Tempo médio atend. Fisio 2 (min)", "Desvio padrão Fisio 2 (min)", "Observações"],
+  Contratos: ["Data", "id_semana", "Mês", "Paciente", "Tipo", "Fisioterapeuta", "Protocolo / descrição", "Nº sessões", "Valor (R$)", "Condição de pagamento", "Forma de pagamento", "Parcelas", "Status pagamento", "Canal de ingresso", "Observações"],
+  Financeiro: ["Data", "id_semana", "Mês", "Categoria", "Tipo de custo", "Descrição", "Valor (R$)", "Status", "Vencimento", "Paciente / fornecedor", "Observações"],
+  Leads_Canal: ["id_semana", "Canal", "Quantidade", "Observações"],
+};
+
+function lerAba(wb, nome, avisos) {
   const ws = wb.Sheets[nome];
   if (!ws) return null;
   const linhas = window.XLSX.utils.sheet_to_json(ws, { header: 1, range: HEADER_ROW, raw: true, defval: null });
   const cab = (linhas[0] || []).map(h => (h == null ? "" : String(h).trim()));
+  const esperado = CABECALHOS[nome] || [];
+  esperado.forEach((h, i) => { if (!cab[i] && h) { cab[i] = h; avisos?.push(`Aba ${nome}: cabeçalho da coluna ${i + 1} estava vazio — tratado como "${h}". Restaure o título na planilha.`); } });
   return linhas.slice(1).map(l => { const o = {}; cab.forEach((h, i) => { if (h) o[h] = l[i]; }); return o; });
 }
 
@@ -46,7 +58,7 @@ export function analisar(arrayBuffer) {
     }
   } else out.avisos.push("Aba Config não encontrada: nomes dos fisioterapeutas e metas não serão importados.");
 
-  const base = lerAba(wb, "Base_Semanal") || [];
+  const base = lerAba(wb, "Base_Semanal", out.avisos) || [];
   const chavesBase = ["Leads recebidos", "Aval. agendadas", "Aval. canceladas", "Aval. realizadas Fisio 1", "Aval. realizadas Fisio 2", "Contratos fechados Fisio 1", "Contratos fechados Fisio 2",
     "Atendimentos Fisio 1", "Atendimentos Fisio 2", "Cancelamentos de atendimentos", "Novos pacientes", "Horários disponíveis manhã", "Horários ocupados manhã", "Horários disponíveis tarde", "Horários ocupados tarde",
     "Tempo médio atend. Fisio 1 (min)", "Desvio padrão Fisio 1 (min)", "Tempo médio atend. Fisio 2 (min)", "Desvio padrão Fisio 2 (min)"];
@@ -63,14 +75,17 @@ export function analisar(arrayBuffer) {
   }
   if (!wb.Sheets["Base_Semanal"]) out.avisos.push("Aba Base_Semanal não encontrada.");
 
-  for (const r of lerAba(wb, "Contratos") || []) {
+  for (const r of lerAba(wb, "Contratos", out.avisos) || []) {
     const d = data(r["Data"]); if (!d) continue;
     const tipo = t(r["Tipo"]);
     if (!["Avaliação", "Protocolo"].includes(tipo)) { out.avisos.push(`Contrato de ${d} ignorado: tipo "${tipo}" inválido.`); continue; }
     out.contratos.push({ data: d, paciente: t(r["Paciente"]), tipo, fisio_nome: t(r["Fisioterapeuta"]), descricao: t(r["Protocolo / descrição"]), n_sessoes: nn(r["Nº sessões"]), valor: n(r["Valor (R$)"]),
       condicao: t(r["Condição de pagamento"]), forma_pagamento: t(r["Forma de pagamento"]), parcelas: nn(r["Parcelas"]) ?? 1, status_pagamento: t(r["Status pagamento"]) || "Pago", canal: t(r["Canal de ingresso"]), observacoes: t(r["Observações"]) });
   }
-  for (const r of lerAba(wb, "Financeiro") || []) {
+  if (out.contratos.length && out.contratos.every(c => !c.valor)) out.avisos.push("Todos os contratos estão com valor 0 — confira a coluna \"Valor (R$)\" da aba Contratos.");
+  { const vistos = new Map(); for (const c of out.contratos) { const k = `${c.data}|${(c.paciente || "").toLowerCase()}|${c.tipo}`; vistos.set(k, (vistos.get(k) || 0) + 1); }
+    const rep = [...vistos.entries()].filter(([, v]) => v > 1); if (rep.length) out.avisos.push(`${rep.length} paciente(s) com mais de um contrato do mesmo tipo na mesma data (ex.: ${rep[0][0].split("|")[1]}). Se for entrada + saldo do mesmo protocolo, registre um único contrato com o valor total e as parcelas no Financeiro — senão o número de contratos fica inflado.`); }
+  for (const r of lerAba(wb, "Financeiro", out.avisos) || []) {
     const d = data(r["Data"]); if (!d) continue;
     const cat = t(r["Categoria"]);
     if (!["Receita", "Gasto", "Imposto", "Marketing"].includes(cat)) { out.avisos.push(`Lançamento de ${d} ignorado: categoria "${cat}" inválida.`); continue; }
@@ -78,7 +93,7 @@ export function analisar(arrayBuffer) {
     out.lancamentos.push({ data: d, categoria: cat, tipo_custo: cat === "Gasto" && ["Fixo", "Variável"].includes(tc) ? tc : null, descricao: t(r["Descrição"]), valor: n(r["Valor (R$)"]),
       status: t(r["Status"]) || "Pago", vencimento: data(r["Vencimento"]), contraparte: t(r["Paciente / fornecedor"]), observacoes: t(r["Observações"]) });
   }
-  for (const r of lerAba(wb, "Leads_Canal") || []) {
+  for (const r of lerAba(wb, "Leads_Canal", out.avisos) || []) {
     if (!semanaOk(r["id_semana"]) || !t(r["Canal"])) continue;
     out.leads.push({ id_semana: r["id_semana"], canal: t(r["Canal"]), quantidade: n(r["Quantidade"]), observacoes: t(r["Observações"]) });
   }
